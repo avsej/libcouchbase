@@ -1,0 +1,8 @@
+Code-Review+1: Trond Norbye <trond.norbye@gmail.com>
+Code-Review+2: Matt Ingenthron <matt@couchbase.com>
+Verified+1: Sergey Avseyev <sergey.avseyev@gmail.com>
+Submitted-by: Matt Ingenthron <matt@couchbase.com>
+Submitted-at: Wed, 14 Mar 2012 04:13:16 +0000
+Reviewed-on: http://review.couchbase.org/13882
+Project: libcouchbase
+Branch: refs/heads/master
