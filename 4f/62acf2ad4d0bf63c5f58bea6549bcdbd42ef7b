@@ -1,0 +1,9 @@
+Code-Review+2: Trond Norbye <trond.norbye@gmail.com>
+Code-Review+1: Matt Ingenthron <matt@couchbase.com>
+Verified+1: Sergey Avseyev <sergey.avseyev@gmail.com>
+Code-Review+1: Mordechai Nunberg <mnunberg@haskalah.org>
+Submitted-by: Trond Norbye <trond.norbye@gmail.com>
+Submitted-at: Fri, 01 Jun 2012 15:32:48 +0000
+Reviewed-on: http://review.couchbase.org/16580
+Project: libcouchbase
+Branch: refs/heads/release10
