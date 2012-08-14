@@ -1,0 +1,8 @@
+Code-Review+2: Matt Ingenthron <matt@couchbase.com>
+Verified+1: Matt Ingenthron <matt@couchbase.com>
+Verified+1: Sergey Avseyev <sergey.avseyev@gmail.com>
+Submitted-by: Matt Ingenthron <matt@couchbase.com>
+Submitted-at: Tue, 14 Aug 2012 21:15:52 +0000
+Reviewed-on: http://review.couchbase.org/19610
+Project: libcouchbase
+Branch: refs/heads/release10
