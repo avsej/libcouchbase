@@ -37,13 +37,18 @@
 #else
 #include <inttypes.h>
 #endif
+#include <ev.h>
+
+int should_die_after_error = 0;
 
 static void
 error_callback(lcb_t instance, lcb_error_t error, const char *errinfo)
 {
-    fprintf(stderr, "ERROR: %s (0x%x), %s\n",
+    fprintf(stderr, "ERROR (error_callback): %s (0x%x), %s\n",
             lcb_strerror(instance, error), error, errinfo);
-    exit(EXIT_FAILURE);
+    if (should_die_after_error) {
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -89,18 +94,7 @@ main(int argc, char *argv[])
     lcb_t instance;
     struct lcb_create_st create_options;
     struct lcb_create_io_ops_st io_opts;
-
-    io_opts.version = 0;
-    io_opts.v.v0.type = LCB_IO_OPS_DEFAULT;
-    io_opts.v.v0.cookie = NULL;
-
-    memset(&create_options, 0, sizeof(create_options));
-    err = lcb_create_io_ops(&create_options.v.v0.io, &io_opts);
-    if (err != LCB_SUCCESS) {
-        fprintf(stderr, "Failed to create IO instance: %s\n",
-                lcb_strerror(NULL, err));
-        return 1;
-    }
+    struct ev_loop *loop = ev_default_loop(0);
 
     if (argc > 1) {
         create_options.v.v0.host = argv[1];
@@ -112,24 +106,61 @@ main(int argc, char *argv[])
     if (argc > 3) {
         create_options.v.v0.passwd = argv[3];
     }
-    err = lcb_create(&instance, &create_options);
-    if (err != LCB_SUCCESS) {
-        fprintf(stderr, "Failed to create libcouchbase instance: %s\n",
-                lcb_strerror(NULL, err));
-        return 1;
+    {
+        int try = 0;
+
+        while (try < 10) {
+            memset(&io_opts, 0, sizeof(io_opts));
+            memset(&create_options, 0, sizeof(create_options));
+
+            /* setup IO options */
+            io_opts.version = 0;
+            io_opts.v.v0.type = LCB_IO_OPS_LIBEV;
+            io_opts.v.v0.cookie = loop;
+            err = lcb_create_io_ops(&create_options.v.v0.io, &io_opts);
+            if (err != LCB_SUCCESS) {
+                fprintf(stderr, "Failed to create IO instance: %s\n",
+                        lcb_strerror(NULL, err));
+                return 1;
+            }
+
+            /* setup the connection */
+            err = lcb_create(&instance, &create_options);
+            if (err != LCB_SUCCESS) {
+                lcb_destroy_io_ops(create_options.v.v0.io);
+                fprintf(stderr, "Failed to create libcouchbase instance: %s\n",
+                        lcb_strerror(NULL, err));
+                return 1;
+            }
+            (void)lcb_set_error_callback(instance, error_callback);
+            /* Initiate the connect sequence in libcouchbase */
+            if ((err = lcb_connect(instance)) != LCB_SUCCESS) {
+                lcb_destroy(instance);
+                lcb_destroy_io_ops(create_options.v.v0.io);
+                instance = NULL;
+                try++;
+                continue;
+            }
+            (void)lcb_set_get_callback(instance, get_callback);
+            (void)lcb_set_store_callback(instance, store_callback);
+            /* Run the event loop and wait until we've connected */
+            if ((err = lcb_wait(instance)) != LCB_SUCCESS) {
+                lcb_destroy(instance);
+                lcb_destroy_io_ops(create_options.v.v0.io);
+                instance = NULL;
+                try++;
+                continue;
+            }
+            break;
+        }
+        if (instance == NULL) {
+            fprintf(stderr, "Failed to create libcouchbase instance: %s\n",
+                    lcb_strerror(NULL, err));
+            ev_loop_destroy(loop);
+            exit(EXIT_FAILURE);
+        }
     }
-    (void)lcb_set_error_callback(instance, error_callback);
-    /* Initiate the connect sequence in libcouchbase */
-    if ((err = lcb_connect(instance)) != LCB_SUCCESS) {
-        fprintf(stderr, "Failed to initiate connect: %s\n",
-                lcb_strerror(NULL, err));
-        lcb_destroy(instance);
-        return 1;
-    }
-    (void)lcb_set_get_callback(instance, get_callback);
-    (void)lcb_set_store_callback(instance, store_callback);
-    /* Run the event loop and wait until we've connected */
-    lcb_wait(instance);
+    should_die_after_error = 1;
     {
         lcb_store_cmd_t cmd;
         const lcb_store_cmd_t * const commands[1] = { &cmd };
@@ -160,6 +191,7 @@ main(int argc, char *argv[])
     }
     lcb_wait(instance);
     lcb_destroy(instance);
+    lcb_destroy_io_ops(create_options.v.v0.io);
 
     return 0;
 }

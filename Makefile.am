@@ -247,7 +247,7 @@ example_syncmode_syncmode_LDADD = libcouchbase.la
 
 example_minimal_minimal_SOURCES = example/minimal/minimal.c
 example_minimal_minimal_DEPENDENCIES = libcouchbase.la
-example_minimal_minimal_LDADD = libcouchbase.la
+example_minimal_minimal_LDADD = libcouchbase.la -lev
 
 example_libeventdirect_eventloop_SOURCES = example/libeventdirect/main.c
 example_libeventdirect_eventloop_DEPENDENCIES = libcouchbase.la
