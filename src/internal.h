@@ -66,10 +66,12 @@ extern "C" {
     struct lcb_command_data_st {
         hrtime_t start;
         const void *cookie;
+        lcb_uint16_t vbucket;
         /* if != -1, it means that we are sequentially iterating
          * through the all replicas until first successful response */
-        int replica;
-        lcb_uint16_t vbucket;
+        char replica;
+        /** Flags used for observe */
+        unsigned char flags;
     };
 
     /**
@@ -85,6 +87,36 @@ extern "C" {
         LCB_CONNECT_EINVAL,
         LCB_CONNECT_EUNHANDLED
     } lcb_connect_status_t;
+
+    typedef enum {
+        /**
+         * Request is part of a durability operation. Don't invoke the
+         * user callback.
+         */
+        LCB_CMD_F_OBS_DURABILITY = 1 << 0,
+
+        /**
+         * Request is part of a 'broadcast' operation. A packet is sent for
+         * each server; with the final 'NULL' packet being sent when all
+         * servers have replied.
+         */
+        LCB_CMD_F_OBS_BCAST = 1 << 1,
+
+        /**
+         * Part of an 'lcb_check' command
+         */
+        LCB_CMD_F_OBS_CHECK = 1 << 2
+    } lcb_cmd_flags_t;
+
+    typedef enum {
+        /** Durability requirement. Poll all servers */
+        LCB_OBSERVE_TYPE_DURABILITY,
+        /** Poll the master for simple existence */
+        LCB_OBSERVE_TYPE_CHECK,
+        /** Poll all servers only once */
+        LCB_OBSERVE_TYPE_BCAST
+    } lcb_observe_type_t;
+
 
     typedef struct {
         char *data;
@@ -113,6 +145,8 @@ extern "C" {
         lcb_unlock_callback unlock;
         lcb_configuration_callback configuration;
         lcb_verbosity_callback verbosity;
+        lcb_durability_callback durability;
+        lcb_exists_callback exists;
     };
 
     struct lcb_st {
@@ -198,6 +232,8 @@ extern "C" {
         hashset_t timers;
         /** The set of the pointers to HTTP requests to Cluster */
         hashset_t http_requests;
+        /** Set of pending durability polls */
+        hashset_t durability_polls;
 
         struct lcb_callback_st callbacks;
         struct lcb_histogram_st *histogram;
@@ -278,6 +314,10 @@ extern "C" {
         /* Pointer back to the instance */
         lcb_t instance;
         struct lcb_connection_st connection;
+        struct {
+            unsigned int ttp;
+            unsigned int ttr;
+        } kv_timings;
     };
 
     struct lcb_timer_st {
@@ -601,6 +641,19 @@ extern "C" {
 
     void lcb_parse_vbucket_stream(lcb_t instance);
 
+    void lcb_observe_invoke_callback(lcb_t instance,
+                                     const struct lcb_command_data_st *ct,
+                                     lcb_error_t error,
+                                     const lcb_observe_resp_t *resp);
+
+    lcb_error_t lcb_observe_ex(lcb_t instance,
+                               const void *command_cookie,
+                               lcb_size_t num,
+                               const void *const *items,
+                               lcb_observe_type_t type);
+
+    struct lcb_durability_set_st;
+    void lcb_durability_dset_destroy(struct lcb_durability_set_st *dset);
 
 #ifdef __cplusplus
 }

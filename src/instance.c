@@ -338,6 +338,7 @@ lcb_error_t lcb_create(lcb_t *instance,
     }
     obj->timers = hashset_create();
     obj->http_requests = hashset_create();
+    obj->durability_polls = hashset_create();
     /* No error has occurred yet. */
     obj->last_error = LCB_SUCCESS;
 
@@ -399,7 +400,21 @@ void lcb_destroy(lcb_t instance)
         }
         hashset_destroy(instance->timers);
     }
+
     lcb_connection_cleanup(&instance->connection);
+    if (instance->durability_polls) {
+        struct lcb_durability_set_st **dset_list;
+        lcb_size_t nitems = hashset_num_items(instance->durability_polls);
+        dset_list = (struct lcb_durability_set_st **)
+                hashset_get_items(instance->durability_polls, NULL);
+        if (dset_list) {
+            for (ii = 0; ii < nitems; ii++) {
+                lcb_durability_dset_destroy(dset_list[ii]);
+            }
+            free(dset_list);
+        }
+        hashset_destroy(instance->durability_polls);
+    }
 
     if (instance->vbucket_config != NULL) {
         vbucket_config_destroy(instance->vbucket_config);

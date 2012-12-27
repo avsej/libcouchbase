@@ -81,6 +81,7 @@ ADD_LIBRARY(couchbase SHARED
             src/compat.c
             src/config_cache.c
             src/cookie.c
+            src/durability.c
             src/error.c
             src/flush.c
             src/get.c
@@ -140,6 +141,7 @@ IF(NOT LCB_NO_TESTS)
             tests/behavior-unit-tests.cc
             tests/ccbc_103.cc
             tests/cluster-unit-tests.cc
+            tests/durability-unit-test.cc
             tests/get-unit-test.cc
             tests/getopt-unit-tests.cc
             tests/hashset-unit-test.cc
