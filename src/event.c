@@ -65,8 +65,8 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
     protocol_binary_request_header req;
     protocol_binary_response_header header;
     lcb_size_t nr;
-    char *packet;
-    lcb_size_t packetsize;
+    char *in_bytes;
+    lcb_size_t in_nbytes;
     struct lcb_command_data_st ct;
 
     if (ringbuffer_ensure_alignment(&c->input) != 0) {
@@ -80,8 +80,8 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
         return 0;
     }
 
-    packetsize = ntohl(header.response.bodylen) + (lcb_uint32_t)sizeof(header);
-    if (c->input.nbytes < packetsize) {
+    in_nbytes = ntohl(header.response.bodylen) + (lcb_uint32_t)sizeof(header);
+    if (c->input.nbytes < in_nbytes) {
         return 0;
     }
 
@@ -91,38 +91,38 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
             (header.response.opaque < req.request.opaque &&
              header.response.opaque > 0)) { /* sasl comes with zero opaque */
         /* already processed. */
-        ringbuffer_consumed(&c->input, packetsize);
+        ringbuffer_consumed(&c->input, in_nbytes);
         return 1;
     }
 
     /* we have everything! */
-    if ((packet = malloc(packetsize)) == NULL) {
+    if ((in_bytes = malloc(in_nbytes)) == NULL) {
         lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
         return -1;
     }
-    nr = ringbuffer_read(&c->input, packet, packetsize);
-    if (nr != packetsize) {
+    nr = ringbuffer_read(&c->input, in_bytes, in_nbytes);
+    if (nr != in_nbytes) {
         lcb_error_handler(c->instance, LCB_EINTERNAL, NULL);
-        free(packet);
+        free(in_bytes);
         return -1;
     }
 
     nr = ringbuffer_peek(&c->output_cookies, &ct, sizeof(ct));
     if (nr != sizeof(ct)) {
         lcb_error_handler(c->instance, LCB_EINTERNAL, NULL);
-        free(packet);
+        free(in_bytes);
         return -1;
     }
     ct.vbucket = ntohs(req.request.vbucket);
 
     switch (header.response.magic) {
     case PROTOCOL_BINARY_REQ:
-        c->instance->request_handler[header.response.opcode](c, &ct, (void *)packet);
+        c->instance->request_handler[header.response.opcode](c, &ct, (void *)in_bytes);
         break;
     case PROTOCOL_BINARY_RES: {
         int was_connected = c->connected;
         if (lcb_server_purge_implicit_responses(c, header.response.opaque, stop) != 0) {
-            free(packet);
+            free(in_bytes);
             return -1;
         }
 
@@ -133,7 +133,7 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
 
         if (ntohs(header.response.status) != PROTOCOL_BINARY_RESPONSE_NOT_MY_VBUCKET
                 || header.response.opcode == CMD_GET_REPLICA) {
-            c->instance->response_handler[header.response.opcode](c, &ct, (void *)packet);
+            c->instance->response_handler[header.response.opcode](c, &ct, (void *)in_bytes);
             /* keep command and cookie until we get complete STAT response */
             if (was_connected &&
                     (header.response.opcode != PROTOCOL_BINARY_CMD_STAT || header.response.keylen == 0)) {
@@ -180,11 +180,11 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
 
     default:
         lcb_error_handler(c->instance, LCB_PROTOCOL_ERROR, NULL);
-        free(packet);
+        free(in_bytes);
         return -1;
     }
 
-    free(packet);
+    free(in_bytes);
     return 1;
 }
 
