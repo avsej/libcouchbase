@@ -316,6 +316,17 @@ static void release_socket(lcb_t instance)
     }
 }
 
+static void purge_pending_operations(lcb_t instance)
+{
+    lcb_size_t ii;
+
+    for (ii = 0; ii < instance->nservers; ++ii) {
+        lcb_server_t *server = instance->servers + ii;
+        lcb_purge_single_server(server, LCB_OPERATION_ABORTED);
+    }
+    lcb_purge_http_requests(instance, instance->http_requests, LCB_OPERATION_ABORTED);
+}
+
 LIBCOUCHBASE_API
 void lcb_destroy(lcb_t instance)
 {
@@ -345,24 +356,13 @@ void lcb_destroy(lcb_t instance)
         vbucket_config_destroy(instance->vbucket_config);
     }
 
+    purge_pending_operations(instance);
     for (ii = 0; ii < instance->nservers; ++ii) {
         lcb_server_destroy(instance->servers + ii);
     }
-    for (ii = 0; ii < instance->http_requests->capacity; ++ii) {
-        if (instance->http_requests->items[ii] > 1) {
-            lcb_http_request_t htreq =
-                (lcb_http_request_t)instance->http_requests->items[ii];
-
-            /* we should figure out a better error code for this.. */
-            lcb_http_request_finish(instance,
-                                    NULL,
-                                    htreq,
-                                    LCB_ERROR);
-        }
-    }
+    free(instance->servers);
     hashset_destroy(instance->http_requests);
     free_backup_nodes(instance);
-    free(instance->servers);
     if (instance->io->v.v0.need_cleanup) {
         lcb_destroy_io_ops(instance->io);
     }
@@ -1204,6 +1204,7 @@ static void initial_connect_timeout_handler(lcb_socket_t sock,
 LIBCOUCHBASE_API
 lcb_error_t lcb_connect(lcb_t instance)
 {
+    purge_pending_operations(instance);
     instance->backup_idx = 0;
     instance->io->v.v0.update_timer(instance->io,
                                     instance->timeout.event,

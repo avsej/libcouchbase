@@ -170,7 +170,7 @@ static int http_parser_body_cb(http_parser *p, const char *bytes, lcb_size_t nby
          * cancel the request, therefore doesn't need any
          * further notifications */
         req->on_complete = NULL;
-        lcb_http_request_finish(req->instance, req->server, req, LCB_SUCCESS);
+        lcb_http_request_finish(ctx->instance, req, LCB_SUCCESS);
         return 0;
     }
     if (req->chunked) {
@@ -340,7 +340,6 @@ static int request_do_write(lcb_http_request_t req)
 }
 
 void lcb_http_request_finish(lcb_t instance,
-                             lcb_server_t *server,
                              lcb_http_request_t req,
                              lcb_error_t error)
 {
@@ -355,28 +354,25 @@ void lcb_http_request_finish(lcb_t instance,
 
     TRACE_HTTP_END(req, error, &resp);
     if (req->on_complete) {
-        req->on_complete(req,
-                         req->instance, req->command_cookie, error, &resp);
+        req->on_complete(req, req->instance, req->command_cookie, error, &resp);
         req->on_complete = NULL;
     }
 
     lcb_cancel_http_request(instance, req);
 
     if (req->server) {
-        hashset_remove(server->http_requests, req);
+        hashset_remove(req->server->http_requests, req);
     } else {
         hashset_remove(instance->http_requests, req);
     }
     http_request_destroy(req);
     lcb_maybe_breakout(instance);
-    (void)server;
 }
 
 static void request_event_handler(lcb_socket_t sock, short which, void *arg)
 {
     lcb_http_request_t req = arg;
     lcb_t instance = req->instance;
-    lcb_server_t *server = req->server;
     lcb_ssize_t rv;
     int should_continue = 1;
     lcb_error_t err = LCB_SUCCESS;
@@ -412,7 +408,7 @@ static void request_event_handler(lcb_socket_t sock, short which, void *arg)
     }
 
     if (!should_continue) {
-        lcb_http_request_finish(instance, server, req, err);
+        lcb_http_request_finish(instance, req, err);
     }
 
     /* log whatever error ocurred here */
@@ -428,10 +424,7 @@ static void request_connect_handler(lcb_socket_t sock, short which, void *arg)
     lcb_error_t err = request_connect((lcb_http_request_t)arg);
 
     if (err != LCB_SUCCESS) {
-        lcb_http_request_finish(req->instance,
-                                req->server,
-                                req,
-                                err);
+        lcb_http_request_finish(req->instance, req, err);
     }
 
     (void)sock;

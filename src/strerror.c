@@ -95,6 +95,9 @@ const char *lcb_strerror(lcb_t instance, lcb_error_t error)
     case LCB_PLUGIN_VERSION_MISMATCH:
         return "The plugin used for IO operations cannot be loaded due to"
                " a version mismatch";
+    case LCB_OPERATION_ABORTED:
+        return "Operation has been aborted by client. For example during"
+               " reconnection";
     default:
         return "Unknown error.. are you sure libcouchbase gave you that?";
     }

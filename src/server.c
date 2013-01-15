@@ -347,17 +347,21 @@ lcb_error_t lcb_failout_server(lcb_server_t *server,
     return error;
 }
 
-static void purge_http_request(lcb_server_t *server)
+void lcb_purge_http_requests(lcb_t instance, hashset_t requests, lcb_error_t err)
 {
     lcb_size_t ii;
     lcb_http_request_t *htitems;
     lcb_size_t curix;
-    lcb_size_t nitems = hashset_num_items(server->http_requests);
+    lcb_size_t nitems = hashset_num_items(requests);
+
+    if (nitems == 0) {
+        return;
+    }
     htitems = malloc(nitems * sizeof(*htitems));
 
-    for (curix = 0, ii = 0; ii < server->http_requests->capacity; ii++) {
-        if (server->http_requests->items[ii] > 1) {
-            htitems[curix] = (lcb_http_request_t)server->http_requests->items[ii];
+    for (curix = 0, ii = 0; ii < requests->capacity; ii++) {
+        if (requests->items[ii] > 1) {
+            htitems[curix] = (lcb_http_request_t)requests->items[ii];
             curix++;
         }
     }
@@ -365,10 +369,7 @@ static void purge_http_request(lcb_server_t *server)
     assert(curix);
 
     for (ii = 0; ii < curix; ii++) {
-        lcb_http_request_finish(server->instance,
-                                server,
-                                htitems[ii],
-                                LCB_ETMPFAIL);
+        lcb_http_request_finish(instance, htitems[ii], err);
     }
 
     free(htitems);
@@ -417,11 +418,7 @@ void lcb_server_destroy(lcb_server_t *server)
     ringbuffer_destruct(&server->pending);
     ringbuffer_destruct(&server->pending_cookies);
     ringbuffer_destruct(&server->input);
-
-    if (hashset_num_items(server->http_requests)) {
-        purge_http_request(server);
-    }
-
+    lcb_purge_http_requests(server->instance, server->http_requests, LCB_OPERATION_ABORTED);
     hashset_destroy(server->http_requests);
     memset(server, 0xff, sizeof(*server));
 }

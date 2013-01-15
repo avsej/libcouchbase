@@ -380,9 +380,10 @@ extern "C" {
     };
 
     void lcb_http_request_finish(lcb_t instance,
-                                 lcb_server_t *server,
                                  lcb_http_request_t req,
                                  lcb_error_t error);
+    void lcb_purge_http_requests(lcb_t instance, hashset_t requests, lcb_error_t error);
+
 
     lcb_error_t lcb_synchandler_return(lcb_t instance, lcb_error_t retcode);
 

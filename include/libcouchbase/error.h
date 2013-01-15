@@ -176,12 +176,17 @@ extern "C" {
         /**
          * Libcouchbase cannot load the plugin because of version mismatch
          */
-        LCB_PLUGIN_VERSION_MISMATCH = 0x1e
+        LCB_PLUGIN_VERSION_MISMATCH = 0x1e,
+        /**
+         * Operation has been aborted by client. For example during
+         * reconnection
+         */
+        LCB_OPERATION_ABORTED = 0x1f
 #ifdef LIBCOUCHBASE_INTERNAL
         /**
          * This is a private value used by the tests in libcouchbase
          */
-        , LCB_MAX_ERROR_VAL = 0x1f
+        , LCB_MAX_ERROR_VAL = 0x20
 #endif
     } lcb_error_t;
 

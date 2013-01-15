@@ -675,3 +675,75 @@ TEST_F(MockUnitTest, testBufferRelocationOnNodeFailover)
     ASSERT_STREQ(bytes.c_str(), val.c_str());
     free(rv.bytes);
 }
+
+extern "C" {
+    int reconnect_seqno = -1;
+
+    static void reconnect_error_callback(lcb_t instance,
+                                       lcb_error_t err,
+                                       const char *errinfo)
+    {
+        std::cerr << "Error " << lcb_strerror(instance, err);
+        if (errinfo) {
+            std::cerr << errinfo;
+        }
+        std::cerr << std::endl;
+        abort();
+    }
+
+    static void reconnect_get_callback(lcb_t instance,
+                                       const void *,
+                                       lcb_error_t error,
+                                       const lcb_get_resp_t *)
+    {
+        reconnect_seqno--;
+        ASSERT_EQ(LCB_KEY_ENOENT, error);
+
+        /* imagine we've decided to reconnect the instance */
+        lcb_connect(instance);
+    }
+
+    static void reconnect_store_callback(lcb_t,
+                                         const void *,
+                                         lcb_storage_t,
+                                         lcb_error_t error,
+                                         const lcb_store_resp_t *)
+    {
+        reconnect_seqno--;
+
+        /* all operations after get should be aborted because of
+         * reconnect */
+        ASSERT_EQ(LCB_OPERATION_ABORTED, error);
+    }
+
+}
+
+TEST_F(MockUnitTest, testReconnect)
+{
+    lcb_error_t err;
+    lcb_t instance;
+    createConnection(instance);
+
+    (void)lcb_set_error_callback(instance, reconnect_error_callback);
+    (void)lcb_set_get_callback(instance, reconnect_get_callback);
+    (void)lcb_set_store_callback(instance, reconnect_store_callback);
+
+    reconnect_seqno = 0;
+
+    lcb_get_cmd_t getcmd("testReconnect_get", sizeof("testReconnect_get"));
+    lcb_get_cmd_t *getcmds[] = { &getcmd };
+    err = lcb_get(instance, NULL, 1, getcmds);
+    ASSERT_EQ(LCB_SUCCESS, err);
+    reconnect_seqno++;
+
+    lcb_store_cmd_t setcmd(LCB_SET, "testReconnect_set", sizeof("testReconnect_set"),
+                           "foo", sizeof("foo"));
+    lcb_store_cmd_t *setcmds[] = { &setcmd };
+    err = lcb_store(instance, NULL, 1, setcmds);
+    ASSERT_EQ(LCB_SUCCESS, err);
+    reconnect_seqno++;
+
+    lcb_wait(instance);
+    ASSERT_EQ(reconnect_seqno, 0);
+    lcb_destroy(instance);
+}
