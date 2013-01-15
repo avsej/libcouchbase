@@ -137,9 +137,7 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
             /* keep command and cookie until we get complete STAT response */
             if (was_connected &&
                     (header.response.opcode != PROTOCOL_BINARY_CMD_STAT || header.response.keylen == 0)) {
-                nr = ringbuffer_read(&c->cmd_log, req.bytes, sizeof(req));
-                assert(nr == sizeof(req));
-                ringbuffer_consumed(&c->cmd_log, ntohl(req.request.bodylen));
+                ringbuffer_consumed(&c->cmd_log, sizeof(req) + ntohl(req.request.bodylen));
                 ringbuffer_consumed(&c->output_cookies, sizeof(ct));
             }
         } else {
