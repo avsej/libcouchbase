@@ -95,34 +95,22 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
         return 1;
     }
 
-    packet = c->input.read_head;
     /* we have everything! */
-
-    if (!ringbuffer_is_continous(&c->input, RINGBUFFER_READ,
-                                 packetsize)) {
-        /* The buffer isn't continous.. for now just copy it out and
-        ** operate on the copy ;)
-        */
-        if ((packet = malloc(packetsize)) == NULL) {
-            lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
-            return -1;
-        }
-        nr = ringbuffer_read(&c->input, packet, packetsize);
-        if (nr != packetsize) {
-            lcb_error_handler(c->instance, LCB_EINTERNAL,
-                              NULL);
-            free(packet);
-            return -1;
-        }
+    if ((packet = malloc(packetsize)) == NULL) {
+        lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
+        return -1;
+    }
+    nr = ringbuffer_read(&c->input, packet, packetsize);
+    if (nr != packetsize) {
+        lcb_error_handler(c->instance, LCB_EINTERNAL, NULL);
+        free(packet);
+        return -1;
     }
 
     nr = ringbuffer_peek(&c->output_cookies, &ct, sizeof(ct));
     if (nr != sizeof(ct)) {
-        lcb_error_handler(c->instance, LCB_EINTERNAL,
-                          NULL);
-        if (packet != c->input.read_head) {
-            free(packet);
-        }
+        lcb_error_handler(c->instance, LCB_EINTERNAL, NULL);
+        free(packet);
         return -1;
     }
     ct.vbucket = ntohs(req.request.vbucket);
@@ -134,9 +122,7 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
     case PROTOCOL_BINARY_RES: {
         int was_connected = c->connected;
         if (lcb_server_purge_implicit_responses(c, header.response.opaque, stop) != 0) {
-            if (packet != c->input.read_head) {
-                free(packet);
-            }
+            free(packet);
             return -1;
         }
 
@@ -195,20 +181,12 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
     }
 
     default:
-        lcb_error_handler(c->instance,
-                          LCB_PROTOCOL_ERROR,
-                          NULL);
-        if (packet != c->input.read_head) {
-            free(packet);
-        }
+        lcb_error_handler(c->instance, LCB_PROTOCOL_ERROR, NULL);
+        free(packet);
         return -1;
     }
 
-    if (packet != c->input.read_head) {
-        free(packet);
-    } else {
-        ringbuffer_consumed(&c->input, packetsize);
-    }
+    free(packet);
     return 1;
 }
 
