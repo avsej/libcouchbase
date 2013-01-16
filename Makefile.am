@@ -123,6 +123,7 @@ libcouchbase_la_SOURCES = \
                         src/arithmetic.c \
                         src/base64.c \
                         src/behavior.c \
+                        src/buffer.c \
                         src/compat.c \
                         src/config_static.h \
                         src/cookie.c \
@@ -258,7 +259,9 @@ endif
 
 tests_unit_tests_SOURCES = \
                            src/base64.c \
+                           src/buffer.c \
                            src/hashset.c \
+                           src/packet.c \
                            src/ringbuffer.c \
                            tests/base64-unit-test.cc \
                            tests/behavior-unit-tests.cc \
@@ -266,6 +269,7 @@ tests_unit_tests_SOURCES = \
                            tests/hashset-unit-test.cc \
                            tests/memcached-compat-unit-test.cc \
                            tests/ringbuffer-unit-test.cc \
+                           tests/packet-unit-test.cc \
                            tests/strerror-unit-test.cc \
                            tests/timeout.c \
                            tests/unit_tests.cc \

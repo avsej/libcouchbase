@@ -41,6 +41,8 @@ lcb_error_t lcb_touch(lcb_t instance,
     lcb_size_t ii;
     int vb;
     struct server_info_st *servers = NULL;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -99,10 +101,19 @@ lcb_error_t lcb_touch(lcb_t instance,
         /* @todo fix the relative time! */
         req.message.body.expiration = htonl((lcb_uint32_t)exp);
         TRACE_TOUCH_BEGIN(&req, key, nkey, exp);
-        lcb_server_start_packet(server, command_cookie,
-                                req.bytes, sizeof(req.bytes));
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_end_packet(server);
+
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes,
+                              sizeof(req.bytes));
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        /* TODO: trigger lcb_server_send_packets() no more than once
+         * per server in multi-remove mode */
         lcb_server_send_packets(server);
     }
     free(servers);

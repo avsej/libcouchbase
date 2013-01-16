@@ -29,6 +29,8 @@ lcb_error_t lcb_server_stats(lcb_t instance,
                              const lcb_server_stats_cmd_t *const *commands)
 {
     lcb_size_t count;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -63,10 +65,16 @@ lcb_error_t lcb_server_stats(lcb_t instance,
         for (ii = 0; ii < instance->nservers; ++ii) {
             server = instance->servers + ii;
             TRACE_STATS_BEGIN(&req, server->authority, arg, narg);
-            lcb_server_start_packet(server, command_cookie,
-                                    req.bytes, sizeof(req.bytes));
-            lcb_server_write_packet(server, arg, narg);
-            lcb_server_end_packet(server);
+            rc = lcb_packet_start(server, &pkt, command_cookie,
+                                  &req.message.header, req.bytes,
+                                  sizeof(req.bytes));
+            if (rc != LCB_SUCCESS) {
+                return lcb_synchandler_return(instance, rc);
+            }
+            rc = lcb_packet_write(pkt, arg, narg);
+            if (rc != LCB_SUCCESS) {
+                return lcb_synchandler_return(instance, rc);
+            }
             lcb_server_send_packets(server);
         }
     }
@@ -86,6 +94,8 @@ lcb_error_t lcb_server_versions(lcb_t instance,
                                 const lcb_server_version_cmd_t *const *commands)
 {
     lcb_size_t count;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
 
     if (instance->vbucket_config == NULL) {
         switch (instance->type) {
@@ -115,8 +125,12 @@ lcb_error_t lcb_server_versions(lcb_t instance,
         for (ii = 0; ii < instance->nservers; ++ii) {
             server = instance->servers + ii;
             TRACE_VERSIONS_BEGIN(&req, server->authority);
-            lcb_server_complete_packet(server, command_cookie,
-                                       req.bytes, sizeof(req.bytes));
+            rc = lcb_packet_start(server, &pkt, command_cookie,
+                                  &req.message.header, req.bytes,
+                                  sizeof(req.bytes));
+            if (rc != LCB_SUCCESS) {
+                return lcb_synchandler_return(instance, rc);
+            }
             lcb_server_send_packets(server);
         }
     }

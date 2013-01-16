@@ -125,6 +125,13 @@ AS_IF([test "x$ac_cv_m32" = "xyes"],
                 LDFLAGS="$LDFLAGS -m64"
               ]) ])
 
+dnl check for IOV_MAX, and fall back to UIO_MAXIOV on BSDish systems
+AC_CHECK_DECL([IOV_MAX], [],
+	      [AC_CHECK_DECL([UIO_MAXIOV], [AC_DEFINE([IOV_MAX], [UIO_MAXIOV])],
+					   [AC_DEFINE([IOV_MAX], [16], [Define if not provided by <limits.h>])],
+					   [[#include <sys/uio.h>]])],
+	      [[#include <limits.h>]])
+
 AC_SEARCH_LIBS(socket, socket)
 AC_SEARCH_LIBS(gethostbyname, nsl)
 AC_SEARCH_LIBS(dlopen, dl)
@@ -177,7 +184,7 @@ AC_CHECK_HEADERS_ONCE([mach/mach_time.h sys/socket.h sys/time.h
                        netinet/in.h inttypes.h netdb.h unistd.h
                        ws2tcpip.h winsock2.h event.h stdint.h
                        sys/uio.h sys/types.h fcntl.h dlfcn.h
-                       ev.h libev/ev.h sys/sdt.h])
+                       ev.h libev/ev.h sys/sdt.h limits.h sys/uio.h])
 
 AS_IF([test "x$ac_cv_header_stdint_h" != "xyes"],
       [AC_MSG_ERROR(Failed to locate stdint.h)])

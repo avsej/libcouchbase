@@ -32,6 +32,8 @@ lcb_error_t lcb_store(lcb_t instance,
                       const lcb_store_cmd_t *const *items)
 {
     size_t ii;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -47,7 +49,7 @@ lcb_error_t lcb_store(lcb_t instance,
     for (ii = 0; ii < num; ++ii) {
         lcb_server_t server;
         protocol_binary_request_set req;
-        lcb_size_t headersize;
+        lcb_size_t nreq;
         lcb_size_t bodylen;
         int vb, idx;
 
@@ -89,7 +91,7 @@ lcb_error_t lcb_store(lcb_t instance,
         req.message.body.flags = htonl(flags);
         req.message.body.expiration = htonl((lcb_uint32_t)exp);
 
-        headersize = sizeof(req.bytes);
+        nreq = sizeof(req.bytes);
         switch (operation) {
         case LCB_ADD:
             req.message.header.request.opcode = PROTOCOL_BINARY_CMD_ADD;
@@ -103,12 +105,12 @@ lcb_error_t lcb_store(lcb_t instance,
         case LCB_APPEND:
             req.message.header.request.opcode = PROTOCOL_BINARY_CMD_APPEND;
             req.message.header.request.extlen = 0;
-            headersize -= 8;
+            nreq -= 8;
             break;
         case LCB_PREPEND:
             req.message.header.request.opcode = PROTOCOL_BINARY_CMD_PREPEND;
             req.message.header.request.extlen = 0;
-            headersize -= 8;
+            nreq -= 8;
             break;
         default:
             /* We were given an unknown storage operation. */
@@ -124,10 +126,22 @@ lcb_error_t lcb_store(lcb_t instance,
         req.message.header.request.bodylen = htonl((lcb_uint32_t)bodylen);
 
         TRACE_STORE_BEGIN(&req, key, nkey, bytes, nbytes, flags, exp);
-        lcb_server_start_packet(server, command_cookie, &req, headersize);
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_write_packet(server, bytes, nbytes);
-        lcb_server_end_packet(server);
+
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes, nreq);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, bytes, nbytes);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        /* TODO: trigger lcb_server_send_packets() no more than once
+         * per server in multi-remove mode */
         lcb_server_send_packets(server);
     }
 

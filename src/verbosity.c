@@ -24,6 +24,9 @@ lcb_error_t lcb_set_verbosity(lcb_t instance,
                               const lcb_verbosity_cmd_t *const *commands)
 {
     lcb_size_t count;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
+
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
         switch (instance->type) {
@@ -76,9 +79,12 @@ lcb_error_t lcb_set_verbosity(lcb_t instance,
             }
 
             TRACE_VERBOSITY_BEGIN(&req, server, lvl);
-            lcb_server_start_packet(srv, command_cookie, req.bytes,
-                                    sizeof(req.bytes));
-            lcb_server_end_packet(srv);
+            rc = lcb_packet_start(srv, &pkt, command_cookie,
+                                  &req.message.header, req.bytes,
+                                  sizeof(req.bytes));
+            if (rc != LCB_SUCCESS) {
+                return lcb_synchandler_return(instance, rc);
+            }
             lcb_server_send_packets(srv);
             found = 1;
         }

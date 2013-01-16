@@ -58,6 +58,14 @@
 #include <stdlib.h>
 #endif
 
+#ifdef HAVE_LIMITS_H
+#include <limits.h>
+#endif
+
+#ifdef HAVE_SYS_UIO_H
+#include <sys/uio.h>
+#endif
+
 #ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
 #endif

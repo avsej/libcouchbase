@@ -113,9 +113,9 @@ static void teardown(void)
 struct rvbuf {
     lcb_error_t error;
     lcb_storage_t operation;
-    const char *key;
+    char *key;
     lcb_size_t nkey;
-    const char *bytes;
+    char *bytes;
     lcb_size_t nbytes;
     lcb_cas_t cas;
     lcb_uint32_t flags;
@@ -132,8 +132,9 @@ static void store_callback(lcb_t instance,
     struct rvbuf *rv = (struct rvbuf *)cookie;
     rv->error = error;
     rv->operation = operation;
-    rv->key = resp->v.v0.key;
     rv->nkey = resp->v.v0.nkey;
+    rv->key = malloc(rv->nkey);
+    memcpy(rv->key, resp->v.v0.key, rv->nkey);
     rv->cas = resp->v.v0.cas;
     assert(io);
     io->v.v0.stop_event_loop(io);
@@ -149,8 +150,9 @@ static void mstore_callback(lcb_t instance,
     struct rvbuf *rv = (struct rvbuf *)cookie;
     rv->errors |= error;
     rv->operation = operation;
-    rv->key = resp->v.v0.key;
     rv->nkey = resp->v.v0.nkey;
+    rv->key = malloc(rv->nkey);
+    memcpy(rv->key, resp->v.v0.key, rv->nkey);
     rv->cas = resp->v.v0.cas;
     rv->counter--;
     if (rv->counter <= 0) {
@@ -167,10 +169,12 @@ static void get_callback(lcb_t instance,
 {
     struct rvbuf *rv = (struct rvbuf *)cookie;
     rv->error = error;
-    rv->bytes = resp->v.v0.bytes;
     rv->nbytes = resp->v.v0.nbytes;
-    rv->key = resp->v.v0.key;
+    rv->bytes = malloc(rv->nbytes);
+    memcpy(rv->bytes, resp->v.v0.bytes, rv->nbytes);
     rv->nkey = resp->v.v0.nkey;
+    rv->key = malloc(rv->nkey);
+    memcpy(rv->key, resp->v.v0.key, rv->nkey);
     rv->cas = resp->v.v0.cas;
     rv->flags = resp->v.v0.flags;
     rv->counter--;
@@ -189,8 +193,9 @@ static void touch_callback(lcb_t instance,
     struct rvbuf *rv = (struct rvbuf *)cookie;
     rv->error = error;
     assert(error == LCB_SUCCESS);
-    rv->key = resp->v.v0.key;
     rv->nkey = resp->v.v0.nkey;
+    rv->key = malloc(rv->nkey);
+    memcpy(rv->key, resp->v.v0.key, rv->nkey);
     rv->counter--;
     if (rv->counter <= 0) {
         assert(io);
@@ -550,7 +555,7 @@ static void test_spurious_saslerr(void)
         } else if (rvs[i].nkey != 3) {
             errinfo = "Did not get expected key length";
         } else if (memcmp(rvs[i].key, "KEY", 3) != 0) {
-            errinfo = "Weird key size";
+            errinfo = "Did not get expected key contents";
         }
         if (errinfo) {
             err_exit("%s", errinfo);

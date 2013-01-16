@@ -29,6 +29,8 @@ lcb_error_t lcb_arithmetic(lcb_t instance,
                            const lcb_arithmetic_cmd_t *const *items)
 {
     size_t ii;
+    lcb_packet_t pkt = NULL;
+    lcb_error_t rc;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -96,10 +98,16 @@ lcb_error_t lcb_arithmetic(lcb_t instance,
 
         TRACE_ARITHMETIC_BEGIN(&req, key, nkey, delta, initial,
                                create ? exp : (lcb_time_t)0xffffffff);
-        lcb_server_start_packet(server, command_cookie, req.bytes,
-                                sizeof(req.bytes));
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_end_packet(server);
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes,
+                              sizeof(req.bytes));
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
         lcb_server_send_packets(server);
     }
 

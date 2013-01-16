@@ -22,6 +22,7 @@
  * @todo add more documentation
  */
 #include "internal.h"
+#include <ctype.h>
 
 static int do_fill_input_buffer(lcb_server_t c)
 {
@@ -35,6 +36,7 @@ static int do_fill_input_buffer(lcb_server_t c)
 
     ringbuffer_get_iov(&c->input, RINGBUFFER_WRITE, iov);
 
+    c->instance->io->v.v0.error = 0;
     nr = c->instance->io->v.v0.recvv(c->instance->io, c->sock, iov, 2);
     if (nr == -1) {
         switch (c->instance->io->v.v0.error) {
@@ -65,70 +67,57 @@ static int do_fill_input_buffer(lcb_server_t c)
 
 static int parse_single(lcb_server_t c, hrtime_t stop)
 {
-    protocol_binary_request_header req;
     protocol_binary_response_header header;
     lcb_size_t nr;
-    char *packet;
-    lcb_size_t packetsize;
-    struct lcb_command_data_st ct;
+    char *bytes;
+    lcb_size_t nbytes;
+    lcb_packet_t pkt;
+    lcb_t instance = c->instance;
 
     if (ringbuffer_ensure_alignment(&c->input) != 0) {
-        lcb_error_handler(c->instance, LCB_EINTERNAL,
-                          NULL);
+        lcb_error_handler(instance, LCB_EINTERNAL, NULL);
         return -1;
     }
 
     nr = ringbuffer_peek(&c->input, header.bytes, sizeof(header));
     if (nr < sizeof(header)) {
-        return 0;
+        return 0; /* need more data */
     }
 
-    packetsize = ntohl(header.response.bodylen) + (lcb_uint32_t)sizeof(header);
-    if (c->input.nbytes < packetsize) {
-        return 0;
+    nbytes = ntohl(header.response.bodylen) + (lcb_uint32_t)sizeof(header);
+    if (c->input.nbytes < nbytes) {
+        return 0; /* need more data */
     }
 
-    /* Is it already timed out? */
-    nr = ringbuffer_peek(&c->cmd_log, req.bytes, sizeof(req));
-    if (nr < sizeof(req) || /* the command log doesn't know about it */
-            (header.response.opaque < req.request.opaque &&
-             header.response.opaque > 0)) { /* sasl comes with zero opaque */
-        /* already processed. */
-        ringbuffer_consumed(&c->input, packetsize);
-        return 1;
-    }
-
-    packet = c->input.read_head;
-    /* we have everything! */
-
-    if (!ringbuffer_is_continous(&c->input, RINGBUFFER_READ,
-                                 packetsize)) {
-        /* The buffer isn't continous.. for now just copy it out and
-        ** operate on the copy ;)
-        */
-        if ((packet = malloc(packetsize)) == NULL) {
-            lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
-            return -1;
-        }
-        nr = ringbuffer_read(&c->input, packet, packetsize);
-        if (nr != packetsize) {
-            lcb_error_handler(c->instance, LCB_EINTERNAL,
-                              NULL);
-            free(packet);
-            return -1;
-        }
-    }
-
-    nr = ringbuffer_peek(&c->output_cookies, &ct, sizeof(ct));
-    if (nr != sizeof(ct)) {
-        lcb_error_handler(c->instance, LCB_EINTERNAL,
-                          NULL);
-        if (packet != c->input.read_head) {
-            free(packet);
-        }
+    if (lcb_server_purge_implicit_responses(c, header.response.opaque, stop) != 0) {
         return -1;
     }
-    ct.vbucket = ntohs(req.request.vbucket);
+    pkt = lcb_packet_queue_peek(c->log);
+    if (header.response.opaque < pkt->opaque &&
+        header.response.opaque > 0) { /* sasl comes with zero opaque */
+        ringbuffer_consumed(&c->input, nbytes);
+        return 1; /* already processed. */
+    }
+
+    /* now we have everything! */
+
+    /* assume that the respose bytes is continuous chunk of memory */
+    bytes = c->input.read_head;
+
+    if (!ringbuffer_is_continous(&c->input, RINGBUFFER_READ, nbytes)) {
+        /* The buffer isn't continuous.. for now just copy it out and
+         * operate on the copy ;) */
+        if ((bytes = malloc(nbytes)) == NULL) {
+            lcb_error_handler(instance, LCB_CLIENT_ENOMEM, NULL);
+            return -1;
+        }
+        nr = ringbuffer_read(&c->input, bytes, nbytes);
+        if (nr != nbytes) {
+            lcb_error_handler(instance, LCB_EINTERNAL, NULL);
+            free(bytes);
+            return -1;
+        }
+    }
 
     switch (header.response.magic) {
     case PROTOCOL_BINARY_REQ:
@@ -142,22 +131,15 @@ static int parse_single(lcb_server_t c, hrtime_t stop)
         break;
     case PROTOCOL_BINARY_RES: {
         int was_connected = c->connected;
-        if (lcb_server_purge_implicit_responses(c, header.response.opaque, stop) != 0) {
-            if (packet != c->input.read_head) {
-                free(packet);
-            }
-            return -1;
-        }
 
-        if (c->instance->histogram) {
-            lcb_record_metrics(c->instance, stop - ct.start,
-                               header.response.opcode);
+        if (instance->histogram) {
+            lcb_record_metrics(instance, stop - pkt->start, header.response.opcode);
         }
 
         if (ntohs(header.response.status) != PROTOCOL_BINARY_RESPONSE_NOT_MY_VBUCKET
                 || header.response.opcode == CMD_GET_REPLICA
                 || header.response.opcode == CMD_OBSERVE) {
-            if (lcb_dispatch_response(c, &ct, (void *)packet) == -1) {
+            if (lcb_dispatch_response(c, pkt, (protocol_binary_response_header *)bytes) == -1) {
                 /*
                  * Internal error.. we received an unsupported response
                  * id. This should _ONLY_ happen at development time because
@@ -171,66 +153,35 @@ static int parse_single(lcb_server_t c, hrtime_t stop)
                 return -1;
             }
 
-            /* keep command and cookie until we get complete STAT response */
-            if (was_connected &&
-                    (header.response.opcode != PROTOCOL_BINARY_CMD_STAT || header.response.keylen == 0)) {
-                nr = ringbuffer_read(&c->cmd_log, req.bytes, sizeof(req));
-                assert(nr == sizeof(req));
-                ringbuffer_consumed(&c->cmd_log, ntohl(req.request.bodylen));
-                ringbuffer_consumed(&c->output_cookies, sizeof(ct));
+            /* keep packet until we get complete STAT response */
+            if (was_connected && (header.response.opcode != PROTOCOL_BINARY_CMD_STAT || header.response.keylen == 0)) {
+                lcb_packet_queue_remove(pkt);
+                pkt = NULL;
             }
         } else {
             int idx;
-            char *body;
-            lcb_size_t nbody;
             lcb_server_t new_srv;
-            /* re-schedule command to new server */
-            nr = ringbuffer_read(&c->cmd_log, req.bytes, sizeof(req));
-            assert(nr == sizeof(req));
-            idx = vbucket_found_incorrect_master(c->instance->vbucket_config,
-                                                 ntohs(req.request.vbucket),
-                                                 (int)c->index);
-            assert((lcb_size_t)idx < c->instance->nservers);
-            new_srv = c->instance->servers + idx;
-            req.request.opaque = ++c->instance->seqno;
-            nbody = ntohl(req.request.bodylen);
-            body = malloc(nbody);
-            if (body == NULL) {
-                lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
-                return -1;
-            }
-            nr = ringbuffer_read(&c->cmd_log, body, nbody);
-            assert(nr == nbody);
-            nr = ringbuffer_read(&c->output_cookies, &ct, sizeof(ct));
-            assert(nr == sizeof(ct));
-            /* Preserve the cookie and reset timestamp for the command. This
-             * means that the library will retry the command until it will
-             * get code different from LCB_NOT_MY_VBUCKET */
-            ct.start = gethrtime();
-            lcb_server_retry_packet(new_srv, &ct, &req, sizeof(req));
-            /* FIXME dtrace instrumentation */
-            lcb_server_write_packet(new_srv, body, nbody);
-            lcb_server_end_packet(new_srv);
-            lcb_server_send_packets(new_srv);
-            free(body);
+            idx = vbucket_found_incorrect_master(instance->vbucket_config,
+                                                 pkt->vbucket, (int)c->index);
+            assert((lcb_size_t)idx < instance->nservers);
+            new_srv = instance->servers + idx;
+            lcb_packet_retry(new_srv, pkt);
         }
         break;
     }
 
     default:
-        lcb_error_handler(c->instance,
-                          LCB_PROTOCOL_ERROR,
-                          NULL);
-        if (packet != c->input.read_head) {
-            free(packet);
+        lcb_error_handler(instance, LCB_PROTOCOL_ERROR, NULL);
+        if (bytes != c->input.read_head) {
+            free(bytes);
         }
         return -1;
     }
 
-    if (packet != c->input.read_head) {
-        free(packet);
+    if (bytes != c->input.read_head) {
+        free(bytes);
     } else {
-        ringbuffer_consumed(&c->input, packetsize);
+        ringbuffer_consumed(&c->input, nbytes);
     }
     return 1;
 }
@@ -274,11 +225,10 @@ static int do_read_data(lcb_server_t c, int allow_read)
 
 static int do_send_data(lcb_server_t c)
 {
-    while (c->output.nbytes > 0) {
-        struct lcb_iovec_st iov[2];
+    while (lcb_packet_queue_not_empty(c->output)) {
         lcb_ssize_t nw;
-        ringbuffer_get_iov(&c->output, RINGBUFFER_READ, iov);
-        nw = c->instance->io->v.v0.sendv(c->instance->io, c->sock, iov, 2);
+        lcb_server_iov_fill(c);
+        nw = c->instance->io->v.v0.sendv(c->instance->io, c->sock, c->iov, c->niov);
         if (nw == -1) {
             switch (c->instance->io->v.v0.error) {
             case EINTR:
@@ -294,7 +244,7 @@ static int do_send_data(lcb_server_t c)
                 return -1;
             }
         } else if (nw > 0) {
-            ringbuffer_consumed(&c->output, (lcb_size_t)nw);
+            lcb_server_iov_consume(c, (lcb_size_t)nw);
             lcb_update_server_timer(c);
         }
     }
@@ -309,9 +259,7 @@ void lcb_flush_buffers(lcb_t instance, const void *cookie)
     for (ii = 0; ii < instance->nservers; ++ii) {
         lcb_server_t c = instance->servers + ii;
         if (c->connected) {
-            lcb_server_event_handler(c->sock,
-                                     LCB_READ_EVENT | LCB_WRITE_EVENT,
-                                     c);
+            lcb_server_event_handler(c->sock, LCB_READ_EVENT | LCB_WRITE_EVENT, c);
         }
     }
     (void)cookie;
@@ -321,6 +269,7 @@ void lcb_server_event_handler(lcb_socket_t sock, short which, void *arg)
 {
     lcb_server_t c = arg;
     (void)sock;
+
     if (which & LCB_WRITE_EVENT) {
         if (do_send_data(c) != 0) {
             /* TODO stash error message somewhere
@@ -340,7 +289,7 @@ void lcb_server_event_handler(lcb_socket_t sock, short which, void *arg)
     }
 
     which = LCB_READ_EVENT;
-    if (c->output.nbytes || c->input.nbytes) {
+    if (lcb_packet_queue_not_empty(c->output) || c->input.nbytes) {
         /**
          * If we have data in the read buffer, we need to make sure the event
          * still gets delivered despite nothing being in the actual TCP read
@@ -369,9 +318,12 @@ int lcb_has_data_in_buffers(lcb_t instance)
     }
     for (ii = 0; ii < instance->nservers; ++ii) {
         lcb_server_t c = instance->servers + ii;
-        if (c->cmd_log.nbytes || c->output.nbytes || c->input.nbytes ||
-                c->pending.nbytes || hashset_num_items(c->http_requests)) {
+        if (lcb_packet_queue_not_empty(c->log) || c->input.nbytes
+            || (c->http_requests && hashset_num_items(c->http_requests))) {
             return 1;
+        } else {
+            assert(lcb_packet_queue_not_empty(c->output) == 0);
+            assert(lcb_packet_queue_not_empty(c->pending) == 0);
         }
     }
     return 0;

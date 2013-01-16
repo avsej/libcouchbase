@@ -22,6 +22,9 @@ lcb_error_t lcb_flush(lcb_t instance, const void *command_cookie,
                       lcb_size_t num, const lcb_flush_cmd_t *const *commands)
 {
     lcb_size_t count;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
+
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
         switch (instance->type) {
@@ -35,25 +38,28 @@ lcb_error_t lcb_flush(lcb_t instance, const void *command_cookie,
 
     for (count = 0; count < num; ++count) {
         lcb_server_t server;
-        protocol_binary_request_no_extras flush;
+        protocol_binary_request_no_extras req;
         lcb_size_t ii;
 
         if (commands[count]->version != 0) {
             return lcb_synchandler_return(instance, LCB_EINVAL);
         }
 
-        memset(&flush, 0, sizeof(flush));
-        flush.message.header.request.magic = PROTOCOL_BINARY_REQ;
-        flush.message.header.request.opcode = PROTOCOL_BINARY_CMD_FLUSH;
-        flush.message.header.request.datatype = PROTOCOL_BINARY_RAW_BYTES;
-        flush.message.header.request.opaque = ++instance->seqno;
+        memset(&req, 0, sizeof(req));
+        req.message.header.request.magic = PROTOCOL_BINARY_REQ;
+        req.message.header.request.opcode = PROTOCOL_BINARY_CMD_FLUSH;
+        req.message.header.request.datatype = PROTOCOL_BINARY_RAW_BYTES;
+        req.message.header.request.opaque = ++instance->seqno;
 
         for (ii = 0; ii < instance->nservers; ++ii) {
             server = instance->servers + ii;
-            TRACE_FLUSH_BEGIN(&flush, server->authority);
-            lcb_server_complete_packet(server, command_cookie,
-                                       flush.bytes,
-                                       sizeof(flush.bytes));
+            TRACE_FLUSH_BEGIN(&req, server->authority);
+            rc = lcb_packet_start(server, &pkt, command_cookie,
+                                  &req.message.header, req.bytes,
+                                  sizeof(req.bytes));
+            if (rc != LCB_SUCCESS) {
+                return lcb_synchandler_return(instance, rc);
+            }
             lcb_server_send_packets(server);
         }
     }

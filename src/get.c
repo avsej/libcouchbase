@@ -58,6 +58,8 @@ lcb_error_t lcb_unlock(lcb_t instance,
                        const lcb_unlock_cmd_t *const *items)
 {
     size_t ii;
+    lcb_error_t rc;
+    lcb_packet_t pkt = NULL;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -107,11 +109,18 @@ lcb_error_t lcb_unlock(lcb_t instance,
         req.message.header.request.opcode = CMD_UNLOCK_KEY;
 
         TRACE_UNLOCK_BEGIN(&req, key, nkey);
-        lcb_server_start_packet(server, command_cookie, req.bytes,
-                                sizeof(req.bytes));
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_end_packet(server);
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes,
+                              sizeof(req.bytes));
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
         lcb_server_send_packets(server);
+
     }
 
     return lcb_synchandler_return(instance, LCB_SUCCESS);
@@ -127,6 +136,8 @@ lcb_error_t lcb_get_replica(lcb_t instance,
     protocol_binary_request_get req;
     int vb, idx;
     lcb_size_t ii, *affected_servers = NULL;
+    lcb_packet_t pkt = NULL;
+    lcb_error_t rc;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -168,10 +179,16 @@ lcb_error_t lcb_get_replica(lcb_t instance,
         req.message.header.request.bodylen = ntohl((lcb_uint32_t)nkey);
         req.message.header.request.opaque = ++instance->seqno;
         TRACE_GET_BEGIN(&req, key, nkey, 0);
-        lcb_server_start_packet(server, command_cookie,
-                                req.bytes, sizeof(req.bytes));
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_end_packet(server);
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes,
+                              sizeof(req.bytes));
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            return lcb_synchandler_return(instance, rc);
+        }
     }
 
     for (ii = 0; ii < instance->nservers; ++ii) {
@@ -191,13 +208,15 @@ static lcb_error_t lcb_single_get(lcb_t instance,
 {
     lcb_server_t server;
     protocol_binary_request_gat req;
+    lcb_size_t nreq;
     int vb, idx;
-    lcb_size_t nbytes;
     const void *hashkey = item->v.v0.hashkey;
     lcb_size_t nhashkey = item->v.v0.nhashkey;
     const void *key = item->v.v0.key;
     lcb_size_t nkey = item->v.v0.nkey;
     lcb_time_t exp = item->v.v0.exptime;
+    lcb_packet_t pkt = NULL;
+    lcb_error_t rc;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -234,13 +253,13 @@ static lcb_error_t lcb_single_get(lcb_t instance,
 
     if (!exp) {
         req.message.header.request.opcode = PROTOCOL_BINARY_CMD_GET;
-        nbytes = sizeof(req.bytes) - 4;
+        nreq = sizeof(req.bytes) - 4;
     } else {
         req.message.header.request.opcode = PROTOCOL_BINARY_CMD_GAT;
         req.message.header.request.extlen = 4;
         req.message.body.expiration = ntohl((lcb_uint32_t)exp);
         req.message.header.request.bodylen = ntohl((lcb_uint32_t)(nkey) + 4);
-        nbytes = sizeof(req.bytes);
+        nreq = sizeof(req.bytes);
     }
 
     if (item->v.v0.lock) {
@@ -248,9 +267,16 @@ static lcb_error_t lcb_single_get(lcb_t instance,
         req.message.header.request.opcode = CMD_GET_LOCKED;
     }
     TRACE_GET_BEGIN(&req, key, nkey, exp);
-    lcb_server_start_packet(server, command_cookie, req.bytes, nbytes);
-    lcb_server_write_packet(server, key, nkey);
-    lcb_server_end_packet(server);
+    rc = lcb_packet_start(server, &pkt, command_cookie,
+                          &req.message.header, req.bytes,
+                          nreq);
+    if (rc != LCB_SUCCESS) {
+        return lcb_synchandler_return(instance, rc);
+    }
+    rc = lcb_packet_write(pkt, key, nkey);
+    if (rc != LCB_SUCCESS) {
+        return lcb_synchandler_return(instance, rc);
+    }
     lcb_server_send_packets(server);
 
     return lcb_synchandler_return(instance, LCB_SUCCESS);
@@ -265,6 +291,8 @@ static lcb_error_t lcb_multi_get(lcb_t instance,
     protocol_binary_request_noop noop;
     lcb_size_t ii, *affected_servers = NULL;
     struct server_info_st *servers = NULL;
+    lcb_packet_t pkt = NULL;
+    lcb_error_t rc;
 
     /* we need a vbucket config before we can start getting data.. */
     if (instance->vbucket_config == NULL) {
@@ -346,9 +374,19 @@ static lcb_error_t lcb_multi_get(lcb_t instance,
             req.message.header.request.opcode = CMD_GET_LOCKED;
         }
         TRACE_GET_BEGIN(&req, key, nkey, exp);
-        lcb_server_start_packet(server, command_cookie, req.bytes, nreq);
-        lcb_server_write_packet(server, key, nkey);
-        lcb_server_end_packet(server);
+        rc = lcb_packet_start(server, &pkt, command_cookie,
+                              &req.message.header, req.bytes, nreq);
+        if (rc != LCB_SUCCESS) {
+            free(servers);
+            free(affected_servers);
+            return lcb_synchandler_return(instance, rc);
+        }
+        rc = lcb_packet_write(pkt, key, nkey);
+        if (rc != LCB_SUCCESS) {
+            free(servers);
+            free(affected_servers);
+            return lcb_synchandler_return(instance, rc);
+        }
     }
     free(servers);
 
@@ -365,8 +403,13 @@ static lcb_error_t lcb_multi_get(lcb_t instance,
         if (affected_servers[ii]) {
             server = instance->servers + ii;
             noop.message.header.request.opaque = ++instance->seqno;
-            lcb_server_complete_packet(server, command_cookie,
-                                       noop.bytes, sizeof(noop.bytes));
+            rc = lcb_packet_start(server, &pkt, command_cookie,
+                                  &noop.message.header, noop.bytes,
+                                  sizeof(noop.bytes));
+            if (rc != LCB_SUCCESS) {
+                free(affected_servers);
+                return lcb_synchandler_return(instance, rc);
+            }
             lcb_server_send_packets(server);
         }
     }

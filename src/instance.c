@@ -354,10 +354,7 @@ void lcb_destroy(lcb_t instance)
                 (lcb_http_request_t)instance->http_requests->items[ii];
 
             /* we should figure out a better error code for this.. */
-            lcb_http_request_finish(instance,
-                                    NULL,
-                                    htreq,
-                                    LCB_ERROR);
+            lcb_http_request_finish(instance, NULL, htreq, LCB_ERROR);
         }
     }
     hashset_destroy(instance->http_requests);
@@ -428,6 +425,7 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
 {
     lcb_uint16_t ii, max, buii;
     lcb_size_t num;
+    lcb_error_t rc;
     const char *passwd;
     sasl_callback_t sasl_callbacks[4];
 
@@ -450,17 +448,28 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
     /* servers array should be freed in the caller */
     instance->servers = calloc(num, sizeof(struct lcb_server_st));
     if (instance->servers == NULL) {
-        return lcb_error_handler(instance, LCB_CLIENT_ENOMEM, "Failed to allocate memory");
+        return LCB_CLIENT_ENOMEM;
     }
     instance->nservers = num;
     free_backup_nodes(instance);
     instance->backup_nodes = calloc(num + 1, sizeof(char *));
     if (instance->backup_nodes == NULL) {
-        return lcb_error_handler(instance, LCB_CLIENT_ENOMEM, "Failed to allocate memory");
+        free(instance->servers);
+        return LCB_CLIENT_ENOMEM;
     }
-    for (buii = 0, ii = 0; ii < num; ++ii) {
+    for (buii = 0, ii = 0; ii < num; ++ii, ++buii) {
         instance->servers[ii].instance = instance;
-        lcb_server_initialize(instance->servers + ii, (int)ii);
+        rc = lcb_server_initialize(instance->servers + ii, (int)ii);
+        if (rc != LCB_SUCCESS) {
+            lcb_ssize_t jj = ii - 1;
+            for (; jj >= 0; --jj) {
+                lcb_server_destroy(instance->servers + ii);
+            }
+            free_backup_nodes(instance);
+            free(instance->servers);
+            instance->servers = NULL;
+            return rc;
+        }
         instance->backup_nodes[buii] = instance->servers[ii].rest_api_server;
         /* swap with random position < ii */
         if (buii > 0) {
@@ -469,7 +478,6 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
             instance->backup_nodes[ii] = instance->backup_nodes[nn];
             instance->backup_nodes[nn] = pp;
         }
-        buii++;
     }
 
     instance->sasl.name = vbucket_config_get_user(instance->vbucket_config);
@@ -481,7 +489,7 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
         if (instance->sasl.password.secret.len < sizeof(instance->sasl.password.buffer) - offsetof(sasl_secret_t, data)) {
             memcpy(instance->sasl.password.secret.data, passwd, instance->sasl.password.secret.len);
         } else {
-            return lcb_error_handler(instance, LCB_EINVAL, "Password too long");
+            return LCB_EINVAL;
         }
     }
     memcpy(instance->sasl.callbacks, sasl_callbacks, sizeof(sasl_callbacks));
@@ -506,56 +514,19 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
     return LCB_SUCCESS;
 }
 
-static void relocate_packets(lcb_server_t src,
-                             lcb_t dst_instance)
+static void relocate_packets(lcb_server_t src, lcb_t dst_instance)
 {
-    struct lcb_command_data_st ct;
-    protocol_binary_request_header cmd;
-    lcb_server_t dst;
-    lcb_size_t nbody, npacket;
-    char *body;
-    int idx;
-    lcb_vbucket_t vb;
+    lcb_packet_t pkt = NULL;
 
-    while (ringbuffer_read(&src->cmd_log, cmd.bytes, sizeof(cmd.bytes))) {
-        nbody = ntohl(cmd.request.bodylen); /* extlen + nkey + nval */
-        npacket = sizeof(cmd.bytes) + nbody;
-        body = malloc(nbody);
-        if (body == NULL) {
-            lcb_error_handler(dst_instance, LCB_CLIENT_ENOMEM,
-                              "Failed to allocate memory");
-            return;
-        }
-        assert(ringbuffer_read(&src->cmd_log, body, nbody) == nbody);
-        vb = ntohs(cmd.request.vbucket);
-        idx = vbucket_get_master(dst_instance->vbucket_config, vb);
+    while ((pkt = lcb_packet_queue_pop(src->log)) != NULL) {
+        int idx = vbucket_get_master(dst_instance->vbucket_config, pkt->vbucket);
         if (idx < 0) {
             /* looks like master isn't ready to accept the data, try another
              * one, maybe from fast forward map. this function will never
              * give -1 */
-            idx = vbucket_found_incorrect_master(dst_instance->vbucket_config, vb, idx);
+            idx = vbucket_found_incorrect_master(dst_instance->vbucket_config, pkt->vbucket, idx);
         }
-        dst = dst_instance->servers + (lcb_size_t)idx;
-        if (src->connected) {
-            assert(ringbuffer_read(&src->output_cookies, &ct, sizeof(ct)) == sizeof(ct));
-        } else {
-            assert(ringbuffer_read(&src->pending_cookies, &ct, sizeof(ct)) == sizeof(ct));
-        }
-
-        assert(ringbuffer_ensure_capacity(&dst->cmd_log, npacket));
-        assert(ringbuffer_write(&dst->cmd_log, cmd.bytes, sizeof(cmd.bytes)) == sizeof(cmd.bytes));
-        assert(ringbuffer_write(&dst->cmd_log, body, nbody) == nbody);
-        assert(ringbuffer_ensure_capacity(&dst->output_cookies, sizeof(ct)));
-        assert(ringbuffer_write(&dst->output_cookies, &ct, sizeof(ct)) == sizeof(ct));
-
-        assert(ringbuffer_ensure_capacity(&dst->pending, npacket));
-        assert(ringbuffer_write(&dst->pending, cmd.bytes, sizeof(cmd.bytes)) == sizeof(cmd.bytes));
-        assert(ringbuffer_write(&dst->pending, body, nbody) == nbody);
-        assert(ringbuffer_ensure_capacity(&dst->pending_cookies, sizeof(ct)));
-        assert(ringbuffer_write(&dst->pending_cookies, &ct, sizeof(ct)) == sizeof(ct));
-
-        free(body);
-        lcb_server_send_packets(dst);
+        lcb_packet_push(dst_instance->servers + (lcb_size_t)idx, pkt);
     }
 }
 
@@ -572,6 +543,7 @@ static void lcb_update_serverlist(lcb_t instance)
     VBUCKET_CONFIG_DIFF *diff = NULL;
     lcb_size_t nservers;
     lcb_server_t servers, ss;
+    lcb_error_t rc;
 
     curr_config = instance->vbucket_config;
     next_config = vbucket_config_create();
@@ -595,9 +567,11 @@ static void lcb_update_serverlist(lcb_t instance)
             VBUCKET_DISTRIBUTION_TYPE dist_t = vbucket_config_get_distribution_type(next_config);
             nservers = instance->nservers;
             servers = instance->servers;
-            if (lcb_apply_vbucket_config(instance, next_config) != LCB_SUCCESS) {
+            rc = lcb_apply_vbucket_config(instance, next_config);
+            if (rc != LCB_SUCCESS) {
                 vbucket_free_diff(diff);
                 vbucket_config_destroy(next_config);
+                lcb_error_handler(instance, rc, "Failed to apply REST config");
                 return;
             }
             for (ii = 0; ii < nservers; ++ii) {
@@ -623,7 +597,7 @@ static void lcb_update_serverlist(lcb_t instance)
                 if (instance->vbucket_state_listener != NULL) {
                     instance->vbucket_state_listener(ss);
                 }
-                if (ss->cmd_log.nbytes != 0) {
+                if (lcb_packet_queue_not_empty(ss->log)) {
                     lcb_server_send_packets(ss);
                 }
             }
@@ -641,8 +615,10 @@ static void lcb_update_serverlist(lcb_t instance)
     } else {
         assert(instance->servers == NULL);
         assert(instance->nservers == 0);
-        if (lcb_apply_vbucket_config(instance, next_config) != LCB_SUCCESS) {
+        rc = lcb_apply_vbucket_config(instance, next_config);
+        if (rc != LCB_SUCCESS) {
             vbucket_config_destroy(next_config);
+            lcb_error_handler(instance, rc, "Failed to apply REST config");
             return;
         }
 
@@ -667,7 +643,7 @@ static void lcb_update_serverlist(lcb_t instance)
  */
 static int parse_chunk(lcb_t instance)
 {
-    buffer_t *buffer = &instance->vbucket_stream.chunk;
+    http_buffer_t *buffer = &instance->vbucket_stream.chunk;
     assert(instance->vbucket_stream.chunk_size != 0);
 
     if (instance->vbucket_stream.chunk_size == (lcb_size_t) - 1) {
@@ -704,7 +680,7 @@ static int parse_header(lcb_t instance)
 {
     int response_code;
 
-    buffer_t *buffer = &instance->vbucket_stream.chunk;
+    http_buffer_t *buffer = &instance->vbucket_stream.chunk;
     char *ptr = strstr(buffer->data, "\r\n\r\n");
 
     if (ptr != NULL) {
@@ -769,7 +745,7 @@ const lcb_size_t min_buffer_size = 2048;
  * @param min_free the minimum amount of free space I need
  * @return 1 if success, 0 otherwise
  */
-int grow_buffer(buffer_t *buffer, lcb_size_t min_free)
+int grow_buffer(http_buffer_t *buffer, lcb_size_t min_free)
 {
     if (min_free == 0) {
         /*
@@ -885,7 +861,7 @@ static void vbucket_stream_handler(lcb_socket_t sock, short which, void *arg)
     lcb_t instance = arg;
     lcb_ssize_t nr;
     lcb_size_t avail;
-    buffer_t *buffer = &instance->vbucket_stream.chunk;
+    http_buffer_t *buffer = &instance->vbucket_stream.chunk;
     assert(sock != INVALID_SOCKET);
 
     if ((which & LCB_WRITE_EVENT) == LCB_WRITE_EVENT) {
@@ -1035,7 +1011,6 @@ static void lcb_instance_connect_handler(lcb_socket_t sock,
             instance->sock = lcb_gai2sock(instance,
                                           &instance->curr_ai,
                                           &save_errno);
-
             /* Reset the stream state, we run this only during a new socket. */
             lcb_instance_reset_stream_state(instance);
         }

@@ -30,6 +30,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#undef NDEBUG
+#include <assert.h>
 
 struct libev_cookie {
     struct ev_loop *loop;
@@ -97,19 +99,14 @@ static lcb_ssize_t lcb_io_sendv(struct lcb_io_opt_st *iops,
                                 lcb_size_t niov)
 {
     struct msghdr msg;
-    struct iovec vec[2];
     lcb_ssize_t ret;
 
-    if (niov != 2) {
-        return -1;
-    }
     memset(&msg, 0, sizeof(msg));
-    msg.msg_iov = vec;
-    msg.msg_iovlen = iov[1].iov_len ? (lcb_size_t)2 : (lcb_size_t)1;
-    msg.msg_iov[0].iov_base = iov[0].iov_base;
-    msg.msg_iov[0].iov_len = iov[0].iov_len;
-    msg.msg_iov[1].iov_base = iov[1].iov_base;
-    msg.msg_iov[1].iov_len = iov[1].iov_len;
+    assert(sizeof(struct iovec) == sizeof(struct lcb_iovec_st));
+    assert(offsetof(struct iovec, iov_base) == offsetof(struct lcb_iovec_st, iov_base));
+    assert(offsetof(struct iovec, iov_len) == offsetof(struct lcb_iovec_st, iov_len));
+    msg.msg_iov = (struct iovec *)iov;
+    msg.msg_iovlen = niov;
     ret = sendmsg(sock, &msg, 0);
 
     if (ret < 0) {

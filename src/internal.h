@@ -56,15 +56,56 @@ extern "C" {
 #endif
     typedef struct lcb_server_st *lcb_server_t;
 
-    /**
-     * Data stored per command in the command-cookie buffer...
-     */
-    struct lcb_command_data_st {
+    typedef struct {
+        char *bytes;
+        lcb_size_t size;
+        lcb_size_t nbytes;
+        lcb_size_t nread;
+        int refcount;
+    } buffer_t;
+
+    lcb_error_t buffer_ensure_capacity(buffer_t *buffer, lcb_size_t size);
+    lcb_error_t buffer_write(buffer_t *buffer, const void *src, lcb_size_t nb);
+    void buffer_destroy(buffer_t *buffer);
+
+    typedef struct lcb_packet_st *lcb_packet_t;
+
+    struct lcb_packet_st {
+        lcb_packet_t prev;
+        lcb_packet_t next;
+        lcb_uint8_t opcode;
+        lcb_uint16_t vbucket;
+        lcb_uint32_t opaque;
+        int replica;
         hrtime_t start;
         const void *cookie;
-        int replica;
-        lcb_uint16_t vbucket;
+        buffer_t *payload; /* pointer to shared buffer */
     };
+
+    lcb_error_t lcb_packet_queue_create(lcb_packet_t *queue);
+    void lcb_packet_queue_destroy(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_init(lcb_packet_t queue);
+    int lcb_packet_queue_not_empty(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_push(lcb_packet_t queue, lcb_packet_t operation);
+    lcb_packet_t lcb_packet_queue_peek(lcb_packet_t queue);
+    lcb_packet_t lcb_packet_queue_pop(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_remove(lcb_packet_t operation);
+
+    lcb_error_t lcb_packet_create(lcb_packet_t *packet);
+    void lcb_packet_destroy(lcb_packet_t packet);
+    lcb_error_t lcb_packet_start(lcb_server_t server,
+                                 lcb_packet_t *packet,
+                                 const void *cookie,
+                                 const protocol_binary_request_header *header,
+                                 const void *data,
+                                 lcb_size_t size);
+    lcb_error_t lcb_packet_push(lcb_server_t server,
+                                lcb_packet_t packet);
+    lcb_error_t lcb_packet_retry(lcb_server_t server,
+                                 lcb_packet_t packet);
+    lcb_error_t lcb_packet_write(lcb_packet_t packet,
+                                 const void *data,
+                                 lcb_size_t size);
 
     /**
      * Define constants for connection attemptts
@@ -83,8 +124,8 @@ extern "C" {
         char *data;
         lcb_size_t size;
         lcb_size_t avail;
-    } buffer_t;
-    int grow_buffer(buffer_t *buffer, lcb_size_t min_free);
+    } http_buffer_t;
+    int grow_buffer(http_buffer_t *buffer, lcb_size_t min_free);
 
     struct lcb_histogram_st;
 
@@ -135,9 +176,9 @@ extern "C" {
 
         struct {
             char *header;
-            buffer_t input;
+            http_buffer_t input;
             lcb_size_t chunk_size;
-            buffer_t chunk;
+            http_buffer_t chunk;
         } vbucket_stream;
 
         struct lcb_io_opt_st *io;
@@ -246,19 +287,16 @@ extern "C" {
         /** The address information for this server (the one we're trying) */
         struct addrinfo *curr_ai;
 
-        /** The output buffer for this server */
-        ringbuffer_t output;
-        /** The sent buffer for this server so that we can resend the
+        struct lcb_iovec_st *iov;
+        lcb_size_t niov;
+        /** The output queue for this server */
+        lcb_packet_t output;
+        /** The sent queue for this server so that we can resend the
          * command to another server if the bucket is moved... */
-        ringbuffer_t cmd_log;
-        ringbuffer_t output_cookies;
-        /**
-         * The pending buffer where we write data until we're in a
-         * connected state;
-         */
-        ringbuffer_t pending;
-        ringbuffer_t pending_cookies;
-
+        lcb_packet_t log;
+        /** The pending queue where we write data until we're in a
+         * connected state */
+        lcb_packet_t pending;
         /** The input buffer for this server */
         ringbuffer_t input;
 
@@ -370,100 +408,13 @@ extern "C" {
     void lcb_server_destroy(lcb_server_t server);
     void lcb_server_connected(lcb_server_t server);
 
-    void lcb_server_initialize(lcb_server_t server,
-                               int servernum);
+    lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum);
+    lcb_error_t lcb_server_iov_fill(lcb_server_t server);
+    lcb_error_t lcb_server_iov_consume(lcb_server_t server, lcb_size_t nbytes);
+    int lcb_dispatch_response(lcb_server_t server,
+                              lcb_packet_t packet,
+                              protocol_binary_response_header *res);
 
-    int lcb_dispatch_response(lcb_server_t c,
-                              struct lcb_command_data_st *ct,
-                              protocol_binary_response_header *header);
-
-
-    void lcb_server_buffer_start_packet(lcb_server_t c,
-                                        const void *command_cookie,
-                                        ringbuffer_t *buff,
-                                        ringbuffer_t *buff_cookie,
-                                        const void *data,
-                                        lcb_size_t size);
-
-    void lcb_server_buffer_retry_packet(lcb_server_t c,
-                                        struct lcb_command_data_st *ct,
-                                        ringbuffer_t *buff,
-                                        ringbuffer_t *buff_cookie,
-                                        const void *data,
-                                        lcb_size_t size);
-
-    void lcb_server_buffer_write_packet(lcb_server_t c,
-                                        ringbuffer_t *buff,
-                                        const void *data,
-                                        lcb_size_t size);
-
-    void lcb_server_buffer_end_packet(lcb_server_t c,
-                                      ringbuffer_t *buff);
-
-    void lcb_server_buffer_complete_packet(lcb_server_t c,
-                                           const void *command_cookie,
-                                           ringbuffer_t *buff,
-                                           ringbuffer_t *buff_cookie,
-                                           const void *data,
-                                           lcb_size_t size);
-
-    /**
-     * Initiate a new packet to be sent
-     * @param c the server connection to send it to
-     * @param command_cookie the cookie belonging to this command
-     * @param data pointer to data to include in the packet
-     * @param size the size of the data to include
-     */
-    void lcb_server_start_packet(lcb_server_t c,
-                                 const void *command_cookie,
-                                 const void *data,
-                                 lcb_size_t size);
-
-    /**
-     * Like start_packet, except instead of a cookie, a command data structure
-     * is passed
-     *
-     * @param c the server
-     * @param command_data a cookie. This is copied to the cookie buffer. This is
-     * copied without any modification, so set any boilerplate yourself :)
-     * @param data pointer to data to include in the packet
-     * @param size size of the data
-     */
-    void lcb_server_start_packet_ct(lcb_server_t c,
-                                    struct lcb_command_data_st *command_data,
-                                    const void *data,
-                                    lcb_size_t size);
-
-
-    void lcb_server_retry_packet(lcb_server_t c,
-                                 struct lcb_command_data_st *ct,
-                                 const void *data,
-                                 lcb_size_t size);
-    /**
-     * Write data to the current packet
-     * @param c the server connection to send it to
-     * @param data pointer to data to include in the packet
-     * @param size the size of the data to include
-     */
-    void lcb_server_write_packet(lcb_server_t c,
-                                 const void *data,
-                                 lcb_size_t size);
-    /**
-     * Mark this packet complete
-     */
-    void lcb_server_end_packet(lcb_server_t c);
-
-    /**
-     * Create a complete packet (to avoid calling start + end)
-     * @param c the server connection to send it to
-     * @param command_cookie the cookie belonging to this command
-     * @param data pointer to data to include in the packet
-     * @param size the size of the data to include
-     */
-    void lcb_server_complete_packet(lcb_server_t c,
-                                    const void *command_cookie,
-                                    const void *data,
-                                    lcb_size_t size);
     /**
      * Start sending packets
      * @param server the server to start send data to
@@ -523,11 +474,11 @@ extern "C" {
     int lcb_getaddrinfo(lcb_t instance, const char *hostname,
                         const char *servname, struct addrinfo **res);
 
-    void lcb_failout_observe_request(lcb_server_t server,
-                                     struct lcb_command_data_st *command_data,
-                                     const char *packet,
-                                     lcb_size_t npacket,
-                                     lcb_error_t err);
+/*    void lcb_failout_observe_request(lcb_server_t server,*/
+/*                                     struct lcb_command_data_st *command_data,*/
+/*                                     const char *packet,*/
+/*                                     lcb_size_t npacket,*/
+/*                                     lcb_error_t err);*/
 
 #ifdef __cplusplus
 }
