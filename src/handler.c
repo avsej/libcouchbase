@@ -226,6 +226,7 @@ static void dummy_request_handler(lcb_server_t *server,
 
 static void dummy_response_handler(lcb_server_t *server,
                                    struct lcb_command_data_st *command_data,
+                                   protocol_binary_request_header *req,
                                    protocol_binary_response_header *res)
 {
 #ifdef DEBUG
@@ -233,57 +234,24 @@ static void dummy_response_handler(lcb_server_t *server,
             res->response.opcode, ntohs(res->response.status));
 #endif
     (void)server;
+    (void)req;
     (void)res;
     (void)command_data;
 }
 
 /**
- * Get a pointer to the key. If the buffer isn't continous we need to
- * allocate a temporary chunk of memory and copy the packet over there.
- * packet will return the pointer to the newly allocated packet or
- * NULL if we didn't have to allocate anything.
+ * Get a pointer to the key
  *
- * @param server the server owning the key
+ * @param req the request structure
+ * @param key the pointer to the key
  * @param nkey the number of bytes in the key
- * @param packet where to store the result
- * @return pointer to the key
  */
-static const char *get_key(lcb_server_t *server, lcb_uint16_t *nkey,
-                           char **packet)
+static void get_key(protocol_binary_request_header *req,
+                    const lcb_uint8_t **key, lcb_uint16_t *nkey)
 {
-    protocol_binary_request_header req;
-    lcb_size_t nr = ringbuffer_peek(&server->cmd_log,
-                                    req.bytes, sizeof(req));
-    lcb_size_t packetsize = ntohl(req.request.bodylen) + (lcb_uint32_t)sizeof(req);
-    char *keyptr;
-    *packet = server->cmd_log.read_head;
-    assert(nr == sizeof(req));
-
-    *nkey = ntohs(req.request.keylen);
-    keyptr = *packet + sizeof(req) + req.request.extlen;
-    *packet = NULL;
-
-    if (!ringbuffer_is_continous(&server->cmd_log,
-                                 RINGBUFFER_READ,
-                                 packetsize)) {
-        *packet = malloc(packetsize);
-        if (*packet == NULL) {
-            lcb_error_handler(server->instance, LCB_CLIENT_ENOMEM,
-                              NULL);
-            return NULL;
-        }
-
-        nr = ringbuffer_peek(&server->cmd_log, *packet, packetsize);
-        if (nr != packetsize) {
-            lcb_error_handler(server->instance, LCB_EINTERNAL,
-                              NULL);
-            free(*packet);
-            return NULL;
-        }
-        keyptr = *packet + sizeof(req) + req.request.extlen;
-    }
-
-    return keyptr;
+    const lcb_uint8_t *packet = (const lcb_uint8_t*)req;
+    *nkey = ntohs(req->request.keylen);
+    *key = packet + sizeof(protocol_binary_request_header) + req->request.extlen;
 }
 
 /**
@@ -332,34 +300,22 @@ int lcb_lookup_server_with_command(lcb_t instance,
     return -1;
 }
 
-static void release_key(lcb_server_t *server, char *packet)
-{
-    /*
-     * Packet is a NIL pointer if we didn't allocate a temporary
-     * object.
-     */
-    free(packet);
-    (void)server;
-}
-
 static void getq_response_handler(lcb_server_t *server,
                                   struct lcb_command_data_st *command_data,
+                                  protocol_binary_request_header *req,
                                   protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     protocol_binary_response_getq *getq = (void *)res;
     lcb_uint16_t status = ntohs(res->response.status);
     lcb_size_t nbytes = ntohl(res->response.bodylen);
-    char *packet;
-    lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
     lcb_error_t rc = map_error(status);
+    lcb_uint16_t nkey;
+    const lcb_uint8_t *key;
 
+    get_key(req, &key, &nkey);
     nbytes -= res->response.extlen;
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL, NULL);
-        return;
-    } else if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
+    if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
         const char *bytes = (const char *)res;
         lcb_get_resp_t resp;
         bytes += sizeof(getq->bytes);
@@ -377,26 +333,23 @@ static void getq_response_handler(lcb_server_t *server,
                       res->response.opcode, rc, &resp);
         root->callbacks.get(root, command_data->cookie, rc, &resp);
     }
-    release_key(server, packet);
 }
 
 static void get_replica_response_handler(lcb_server_t *server,
                                          struct lcb_command_data_st *command_data,
+                                         protocol_binary_request_header *request,
                                          protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     protocol_binary_response_get *get = (void *)res;
     lcb_uint16_t status = ntohs(res->response.status);
-    lcb_uint16_t nkey = ntohs(res->response.keylen);
-    const char *key = (const char *)res;
     lcb_error_t rc = map_error(status);
+    lcb_uint16_t nkey;
+    const lcb_uint8_t *key;
 
-    key += sizeof(get->bytes);
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL, NULL);
-        return;
-    } else if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
-        const char *bytes = key + nkey;
+    get_key(request, &key, &nkey);
+    if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
+        const lcb_uint8_t *bytes = key + nkey;
         lcb_size_t nbytes = ntohl(res->response.bodylen) - nkey - res->response.extlen;
         lcb_get_resp_t resp;
         setup_lcb_get_resp_t(&resp, key, nkey, bytes, nbytes,
@@ -453,29 +406,26 @@ static void get_replica_response_handler(lcb_server_t *server,
 
 static void delete_response_handler(lcb_server_t *server,
                                     struct lcb_command_data_st *command_data,
+                                    protocol_binary_request_header *req,
                                     protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     lcb_uint16_t status = ntohs(res->response.status);
     lcb_error_t rc = map_error(status);
-    char *packet;
+    lcb_remove_resp_t resp;
     lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
+    const lcb_uint8_t *key;
 
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL, NULL);
-    } else {
-        lcb_remove_resp_t resp;
-        setup_lcb_remove_resp_t(&resp, key, nkey, res->response.cas);
-        TRACE_REMOVE_END(res->response.opaque, command_data->vbucket,
-                         res->response.opcode, rc, &resp);
-        root->callbacks.remove(root, command_data->cookie, rc, &resp);
-        release_key(server, packet);
-    }
+    get_key(req, &key, &nkey);
+    setup_lcb_remove_resp_t(&resp, key, nkey, res->response.cas);
+    TRACE_REMOVE_END(res->response.opaque, command_data->vbucket,
+                     res->response.opcode, rc, &resp);
+    root->callbacks.remove(root, command_data->cookie, rc, &resp);
 }
 
 static void observe_response_handler(lcb_server_t *server,
                                      struct lcb_command_data_st *command_data,
+                                     protocol_binary_request_header *req,
                                      protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
@@ -531,21 +481,22 @@ static void observe_response_handler(lcb_server_t *server,
                           res->response.opcode, rc);
         root->callbacks.observe(root, command_data->cookie, LCB_SUCCESS, &resp);
     }
+    (void)req;
 }
 
 static void store_response_handler(lcb_server_t *server,
                                    struct lcb_command_data_st *command_data,
+                                   protocol_binary_request_header *req,
                                    protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     lcb_storage_t op;
-
-    char *packet;
     lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
-
+    const lcb_uint8_t *key;
     lcb_uint16_t status = ntohs(res->response.status);
     lcb_error_t rc = map_error(status);
+
+    get_key(req, &key, &nkey);
 
     switch (res->response.opcode) {
     case PROTOCOL_BINARY_CMD_ADD:
@@ -584,29 +535,23 @@ static void store_response_handler(lcb_server_t *server,
         TRACE_STORE_END(res->response.opaque, command_data->vbucket,
                         res->response.opcode, rc, &resp);
         root->callbacks.store(root, command_data->cookie, op, rc, &resp);
-        release_key(server, packet);
     }
 }
 
 static void arithmetic_response_handler(lcb_server_t *server,
                                         struct lcb_command_data_st *command_data,
+                                        protocol_binary_request_header *req,
                                         protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     lcb_uint16_t status = ntohs(res->response.status);
     lcb_error_t rc = map_error(status);
-    char *packet;
-    lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
     lcb_arithmetic_resp_t resp;
     lcb_uint64_t value = 0;
+    lcb_uint16_t nkey;
+    const lcb_uint8_t *key;
 
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL,
-                          NULL);
-        return ;
-    }
-
+    get_key(req, &key, &nkey);
     if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
         memcpy(&value, res + 1, sizeof(value));
         value = ntohll(value);
@@ -616,11 +561,11 @@ static void arithmetic_response_handler(lcb_server_t *server,
     TRACE_ARITHMETIC_END(res->response.opaque, command_data->vbucket,
                          res->response.opcode, rc, &resp);
     root->callbacks.arithmetic(root, command_data->cookie, rc, &resp);
-    release_key(server, packet);
 }
 
 static void stat_response_handler(lcb_server_t *server,
                                   struct lcb_command_data_st *command_data,
+                                  protocol_binary_request_header *req,
                                   protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
@@ -669,10 +614,12 @@ static void stat_response_handler(lcb_server_t *server,
             root->callbacks.stat(root, command_data->cookie, LCB_SUCCESS, &resp);
         }
     }
+    (void)req;
 }
 
 static void verbosity_response_handler(lcb_server_t *server,
                                        struct lcb_command_data_st *command_data,
+                                       protocol_binary_request_header *req,
                                        protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
@@ -694,10 +641,12 @@ static void verbosity_response_handler(lcb_server_t *server,
                             res->response.opcode, LCB_SUCCESS, &resp);
         root->callbacks.verbosity(root, command_data->cookie, LCB_SUCCESS, &resp);
     }
+    (void)req;
 }
 
 static void version_response_handler(lcb_server_t *server,
                                      struct lcb_command_data_st *command_data,
+                                     protocol_binary_request_header *req,
                                      protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
@@ -725,11 +674,12 @@ static void version_response_handler(lcb_server_t *server,
                            res->response.opcode, LCB_SUCCESS);
         root->callbacks.version(root, command_data->cookie, LCB_SUCCESS, &resp);
     }
-
+    (void)req;
 }
 
 static void sasl_list_mech_response_handler(lcb_server_t *server,
                                             struct lcb_command_data_st *command_data,
+                                            protocol_binary_request_header *request,
                                             protocol_binary_response_header *res)
 {
     const char *data;
@@ -777,11 +727,13 @@ static void sasl_list_mech_response_handler(lcb_server_t *server,
     server->instance->io->v.v0.update_event(server->instance->io, server->sock,
                                             server->event, LCB_WRITE_EVENT,
                                             server, lcb_server_event_handler);
+    (void)request;
 }
 
 
 static void sasl_auth_response_handler(lcb_server_t *server,
                                        struct lcb_command_data_st *command_data,
+                                       protocol_binary_request_header *req,
                                        protocol_binary_response_header *res)
 {
     lcb_uint16_t ret = ntohs(res->response.status);
@@ -802,13 +754,16 @@ static void sasl_auth_response_handler(lcb_server_t *server,
     /* Make it known that this was a success. */
     lcb_error_handler(server->instance, LCB_SUCCESS, NULL);
     (void)command_data;
+    (void)req;
 }
 
 static void sasl_step_response_handler(lcb_server_t *server,
                                        struct lcb_command_data_st *command_data,
+                                       protocol_binary_request_header *req,
                                        protocol_binary_response_header *res)
 {
     (void)server;
+    (void)req;
     (void)res;
     (void)command_data;
 
@@ -826,30 +781,26 @@ static void sasl_step_response_handler(lcb_server_t *server,
 
 static void touch_response_handler(lcb_server_t *server,
                                    struct lcb_command_data_st *command_data,
+                                   protocol_binary_request_header *req,
                                    protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
-    char *packet;
-    lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
     lcb_uint16_t status = ntohs(res->response.status);
     lcb_error_t rc = map_error(status);
+    lcb_touch_resp_t resp;
+    lcb_uint16_t nkey;
+    const lcb_uint8_t *key;
 
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL,
-                          NULL);
-    } else {
-        lcb_touch_resp_t resp;
-        setup_lcb_touch_resp_t(&resp, key, nkey, res->response.cas);
-        TRACE_TOUCH_END(res->response.opaque, command_data->vbucket,
-                        res->response.opcode, rc, &resp);
-        root->callbacks.touch(root, command_data->cookie, rc, &resp);
-        release_key(server, packet);
-    }
+    get_key(req, &key, &nkey);
+    setup_lcb_touch_resp_t(&resp, key, nkey, res->response.cas);
+    TRACE_TOUCH_END(res->response.opaque, command_data->vbucket,
+                    res->response.opcode, rc, &resp);
+    root->callbacks.touch(root, command_data->cookie, rc, &resp);
 }
 
 static void flush_response_handler(lcb_server_t *server,
                                    struct lcb_command_data_st *command_data,
+                                   protocol_binary_request_header *req,
                                    protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
@@ -869,29 +820,25 @@ static void flush_response_handler(lcb_server_t *server,
                         res->response.opcode, LCB_SUCCESS);
         root->callbacks.flush(root, command_data->cookie, LCB_SUCCESS, &resp);
     }
+    (void)req;
 }
 
 static void unlock_response_handler(lcb_server_t *server,
                                     struct lcb_command_data_st *command_data,
+                                    protocol_binary_request_header *req,
                                     protocol_binary_response_header *res)
 {
     lcb_t root = server->instance;
     lcb_uint16_t status = ntohs(res->response.status);
-    char *packet;
-    lcb_uint16_t nkey;
-    const char *key = get_key(server, &nkey, &packet);
     lcb_error_t rc = map_error(status);
+    lcb_unlock_resp_t resp;
+    lcb_uint16_t nkey;
+    const lcb_uint8_t *key;
 
-    if (key == NULL) {
-        lcb_error_handler(server->instance, LCB_EINTERNAL,
-                          NULL);
-    } else {
-        lcb_unlock_resp_t resp;
-        setup_lcb_unlock_resp_t(&resp, key, nkey);
-        TRACE_UNLOCK_END(res->response.opaque, command_data->vbucket, rc, &resp);
-        root->callbacks.unlock(root, command_data->cookie, rc, &resp);
-        release_key(server, packet);
-    }
+    get_key(req, &key, &nkey);
+    setup_lcb_unlock_resp_t(&resp, key, nkey);
+    TRACE_UNLOCK_END(res->response.opaque, command_data->vbucket, rc, &resp);
+    root->callbacks.unlock(root, command_data->cookie, rc, &resp);
 }
 
 static void dummy_error_callback(lcb_t instance,

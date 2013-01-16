@@ -133,11 +133,25 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
 
         if (ntohs(header.response.status) != PROTOCOL_BINARY_RESPONSE_NOT_MY_VBUCKET
                 || header.response.opcode == CMD_GET_REPLICA) {
-            c->instance->response_handler[header.response.opcode](c, &ct, (void *)in_bytes);
+            lcb_size_t out_nbytes = sizeof(req) + ntohl(req.request.bodylen);
+            char *out_bytes = malloc(out_nbytes);
+            if (out_bytes == NULL) {
+                lcb_error_handler(c->instance, LCB_CLIENT_ENOMEM, NULL);
+                return -1;
+            }
+            nr = ringbuffer_peek(&c->cmd_log, out_bytes, out_nbytes);
+            if (nr != out_nbytes) {
+                lcb_error_handler(c->instance, LCB_EINTERNAL, NULL);
+                free(out_bytes);
+                free(in_bytes);
+                return -1;
+            }
+            c->instance->response_handler[header.response.opcode](c, &ct, (void *)out_bytes, (void *)in_bytes);
+            free(out_bytes);
             /* keep command and cookie until we get complete STAT response */
             if (was_connected &&
                     (header.response.opcode != PROTOCOL_BINARY_CMD_STAT || header.response.keylen == 0)) {
-                ringbuffer_consumed(&c->cmd_log, sizeof(req) + ntohl(req.request.bodylen));
+                ringbuffer_consumed(&c->cmd_log, out_nbytes);
                 ringbuffer_consumed(&c->output_cookies, sizeof(ct));
             }
         } else {

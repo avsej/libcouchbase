@@ -82,6 +82,7 @@ extern "C" {
                                     protocol_binary_request_header *req);
     typedef void (*RESPONSE_HANDLER)(lcb_server_t *instance,
                                      struct lcb_command_data_st *command_data,
+                                     protocol_binary_request_header *req,
                                      protocol_binary_response_header *res);
 
     /**
