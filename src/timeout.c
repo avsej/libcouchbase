@@ -33,7 +33,7 @@ static void lcb_server_timeout_handler(lcb_socket_t sock,
                                        short which,
                                        void *arg)
 {
-    lcb_server_t *server = arg;
+    lcb_server_t server = arg;
 
     lcb_purge_single_server(server, LCB_ETIMEDOUT);
     lcb_update_server_timer(server);
@@ -43,7 +43,7 @@ static void lcb_server_timeout_handler(lcb_socket_t sock,
     (void)which;
 }
 
-void lcb_update_server_timer(lcb_server_t *server)
+void lcb_update_server_timer(lcb_server_t server)
 {
     lcb_t instance = server->instance;
 

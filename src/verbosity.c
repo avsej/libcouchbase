@@ -36,7 +36,7 @@ lcb_error_t lcb_set_verbosity(lcb_t instance,
     }
 
     for (count = 0; count < num; ++count) {
-        lcb_server_t *srv;
+        lcb_server_t srv;
         protocol_binary_request_verbosity req;
         lcb_size_t ii;
         uint32_t lvl;

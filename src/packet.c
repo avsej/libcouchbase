@@ -24,7 +24,7 @@
 
 #include "internal.h"
 
-void lcb_server_buffer_start_packet(lcb_server_t *c,
+void lcb_server_buffer_start_packet(lcb_server_t c,
                                     const void *command_cookie,
                                     ringbuffer_t *buff,
                                     ringbuffer_t *buff_cookie,
@@ -49,7 +49,7 @@ void lcb_server_buffer_start_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_buffer_retry_packet(lcb_server_t *c,
+void lcb_server_buffer_retry_packet(lcb_server_t c,
                                     struct lcb_command_data_st *ct,
                                     ringbuffer_t *buff,
                                     ringbuffer_t *buff_cookie,
@@ -68,7 +68,7 @@ void lcb_server_buffer_retry_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_buffer_write_packet(lcb_server_t *c,
+void lcb_server_buffer_write_packet(lcb_server_t c,
                                     ringbuffer_t *buff,
                                     const void *data,
                                     lcb_size_t size)
@@ -82,14 +82,14 @@ void lcb_server_buffer_write_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_buffer_end_packet(lcb_server_t *c,
+void lcb_server_buffer_end_packet(lcb_server_t c,
                                   ringbuffer_t *buff)
 {
     (void)c;
     (void)buff;
 }
 
-void lcb_server_buffer_complete_packet(lcb_server_t *c,
+void lcb_server_buffer_complete_packet(lcb_server_t c,
                                        const void *command_cookie,
                                        ringbuffer_t *buff,
                                        ringbuffer_t *buff_cookie,
@@ -102,7 +102,7 @@ void lcb_server_buffer_complete_packet(lcb_server_t *c,
     lcb_server_buffer_end_packet(c, buff);
 }
 
-void lcb_server_retry_packet(lcb_server_t *c,
+void lcb_server_retry_packet(lcb_server_t c,
                              struct lcb_command_data_st *command_data,
                              const void *data,
                              lcb_size_t size)
@@ -120,7 +120,7 @@ void lcb_server_retry_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_start_packet_ct(lcb_server_t *c,
+void lcb_server_start_packet_ct(lcb_server_t c,
                                 struct lcb_command_data_st *command_data,
                                 const void *data,
                                 lcb_size_t size)
@@ -129,7 +129,7 @@ void lcb_server_start_packet_ct(lcb_server_t *c,
 }
 
 
-void lcb_server_start_packet(lcb_server_t *c,
+void lcb_server_start_packet(lcb_server_t c,
                              const void *command_cookie,
                              const void *data,
                              lcb_size_t size)
@@ -147,7 +147,7 @@ void lcb_server_start_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_write_packet(lcb_server_t *c,
+void lcb_server_write_packet(lcb_server_t c,
                              const void *data,
                              lcb_size_t size)
 {
@@ -158,12 +158,12 @@ void lcb_server_write_packet(lcb_server_t *c,
     }
 }
 
-void lcb_server_end_packet(lcb_server_t *c)
+void lcb_server_end_packet(lcb_server_t c)
 {
     (void)c;
 }
 
-void lcb_server_complete_packet(lcb_server_t *c,
+void lcb_server_complete_packet(lcb_server_t c,
                                 const void *command_cookie,
                                 const void *data,
                                 lcb_size_t size)

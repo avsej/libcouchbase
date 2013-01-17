@@ -222,7 +222,7 @@ static lcb_error_t map_error(protocol_binary_response_status in)
  * @param packet where to store the result
  * @return pointer to the key
  */
-static const char *get_key(lcb_server_t *server, lcb_uint16_t *nkey,
+static const char *get_key(lcb_server_t server, lcb_uint16_t *nkey,
                            char **packet)
 {
     protocol_binary_request_header req;
@@ -273,10 +273,10 @@ static const char *get_key(lcb_server_t *server, lcb_uint16_t *nkey,
 int lcb_lookup_server_with_command(lcb_t instance,
                                    lcb_uint8_t opcode,
                                    lcb_uint32_t opaque,
-                                   lcb_server_t *exc)
+                                   lcb_server_t exc)
 {
     protocol_binary_request_header cmd;
-    lcb_server_t *server;
+    lcb_server_t server;
     lcb_size_t nr;
     lcb_size_t ii;
     lcb_size_t offset = 0;
@@ -306,7 +306,7 @@ int lcb_lookup_server_with_command(lcb_t instance,
     return -1;
 }
 
-static void release_key(lcb_server_t *server, char *packet)
+static void release_key(lcb_server_t server, char *packet)
 {
     /*
      * Packet is a NIL pointer if we didn't allocate a temporary
@@ -316,7 +316,7 @@ static void release_key(lcb_server_t *server, char *packet)
     (void)server;
 }
 
-static void getq_response_handler(lcb_server_t *server,
+static void getq_response_handler(lcb_server_t server,
                                   struct lcb_command_data_st *command_data,
                                   protocol_binary_response_header *res)
 {
@@ -354,7 +354,7 @@ static void getq_response_handler(lcb_server_t *server,
     release_key(server, packet);
 }
 
-static void get_replica_response_handler(lcb_server_t *server,
+static void get_replica_response_handler(lcb_server_t server,
                                          struct lcb_command_data_st *command_data,
                                          protocol_binary_response_header *res)
 {
@@ -425,7 +425,7 @@ static void get_replica_response_handler(lcb_server_t *server,
     }
 }
 
-static void delete_response_handler(lcb_server_t *server,
+static void delete_response_handler(lcb_server_t server,
                                     struct lcb_command_data_st *command_data,
                                     protocol_binary_response_header *res)
 {
@@ -448,7 +448,7 @@ static void delete_response_handler(lcb_server_t *server,
     }
 }
 
-static void observe_response_handler(lcb_server_t *server,
+static void observe_response_handler(lcb_server_t server,
                                      struct lcb_command_data_st *command_data,
                                      protocol_binary_response_header *res)
 {
@@ -547,7 +547,7 @@ static void observe_response_handler(lcb_server_t *server,
     }
 }
 
-static void store_response_handler(lcb_server_t *server,
+static void store_response_handler(lcb_server_t server,
                                    struct lcb_command_data_st *command_data,
                                    protocol_binary_response_header *res)
 {
@@ -602,7 +602,7 @@ static void store_response_handler(lcb_server_t *server,
     }
 }
 
-static void arithmetic_response_handler(lcb_server_t *server,
+static void arithmetic_response_handler(lcb_server_t server,
                                         struct lcb_command_data_st *command_data,
                                         protocol_binary_response_header *res)
 {
@@ -633,7 +633,7 @@ static void arithmetic_response_handler(lcb_server_t *server,
     release_key(server, packet);
 }
 
-static void stat_response_handler(lcb_server_t *server,
+static void stat_response_handler(lcb_server_t server,
                                   struct lcb_command_data_st *command_data,
                                   protocol_binary_response_header *res)
 {
@@ -685,7 +685,7 @@ static void stat_response_handler(lcb_server_t *server,
     }
 }
 
-static void verbosity_response_handler(lcb_server_t *server,
+static void verbosity_response_handler(lcb_server_t server,
                                        struct lcb_command_data_st *command_data,
                                        protocol_binary_response_header *res)
 {
@@ -710,7 +710,7 @@ static void verbosity_response_handler(lcb_server_t *server,
     }
 }
 
-static void version_response_handler(lcb_server_t *server,
+static void version_response_handler(lcb_server_t server,
                                      struct lcb_command_data_st *command_data,
                                      protocol_binary_response_header *res)
 {
@@ -742,7 +742,7 @@ static void version_response_handler(lcb_server_t *server,
 
 }
 
-static void sasl_auth_response_handler(lcb_server_t *server,
+static void sasl_auth_response_handler(lcb_server_t server,
                                        struct lcb_command_data_st *command_data,
                                        protocol_binary_response_header *res)
 {
@@ -766,7 +766,7 @@ static void sasl_auth_response_handler(lcb_server_t *server,
     (void)command_data;
 }
 
-static void sasl_step_response_handler(lcb_server_t *server,
+static void sasl_step_response_handler(lcb_server_t server,
                                        struct lcb_command_data_st *command_data,
                                        protocol_binary_response_header *res)
 {
@@ -786,7 +786,7 @@ static void sasl_step_response_handler(lcb_server_t *server,
 #endif
 }
 
-static void touch_response_handler(lcb_server_t *server,
+static void touch_response_handler(lcb_server_t server,
                                    struct lcb_command_data_st *command_data,
                                    protocol_binary_response_header *res)
 {
@@ -810,7 +810,7 @@ static void touch_response_handler(lcb_server_t *server,
     }
 }
 
-static void flush_response_handler(lcb_server_t *server,
+static void flush_response_handler(lcb_server_t server,
                                    struct lcb_command_data_st *command_data,
                                    protocol_binary_response_header *res)
 {
@@ -833,7 +833,7 @@ static void flush_response_handler(lcb_server_t *server,
     }
 }
 
-static void unlock_response_handler(lcb_server_t *server,
+static void unlock_response_handler(lcb_server_t server,
                                     struct lcb_command_data_st *command_data,
                                     protocol_binary_response_header *res)
 {
@@ -1040,7 +1040,7 @@ void lcb_initialize_packet_handlers(lcb_t instance)
     instance->callbacks.verbosity = dummy_verbosity_callback;
 }
 
-int lcb_dispatch_response(lcb_server_t *c,
+int lcb_dispatch_response(lcb_server_t c,
                           struct lcb_command_data_st *ct,
                           protocol_binary_response_header *header)
 {

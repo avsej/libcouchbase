@@ -34,7 +34,7 @@ lcb_error_t lcb_flush(lcb_t instance, const void *command_cookie,
     }
 
     for (count = 0; count < num; ++count) {
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_no_extras flush;
         lcb_size_t ii;
 

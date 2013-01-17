@@ -468,7 +468,7 @@ TEST_F(MockUnitTest, testBrokenFirstNodeInList)
 extern "C" {
     int config_cnt;
 
-    static void vbucket_state_callback(lcb_server_t *server)
+    static void vbucket_state_callback(lcb_server_t server)
     {
         config_cnt++;
         server->instance->io->v.v0.stop_event_loop(server->instance->io);

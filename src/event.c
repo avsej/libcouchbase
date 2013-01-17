@@ -23,7 +23,7 @@
  */
 #include "internal.h"
 
-static int do_fill_input_buffer(lcb_server_t *c)
+static int do_fill_input_buffer(lcb_server_t c)
 {
     struct lcb_iovec_st iov[2];
     lcb_ssize_t nr;
@@ -63,7 +63,7 @@ static int do_fill_input_buffer(lcb_server_t *c)
     return 1;
 }
 
-static int parse_single(lcb_server_t *c, hrtime_t stop)
+static int parse_single(lcb_server_t c, hrtime_t stop)
 {
     protocol_binary_request_header req;
     protocol_binary_response_header header;
@@ -183,7 +183,7 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
             int idx;
             char *body;
             lcb_size_t nbody;
-            lcb_server_t *new_srv;
+            lcb_server_t new_srv;
             /* re-schedule command to new server */
             nr = ringbuffer_read(&c->cmd_log, req.bytes, sizeof(req));
             assert(nr == sizeof(req));
@@ -236,7 +236,7 @@ static int parse_single(lcb_server_t *c, hrtime_t stop)
 }
 
 
-static int do_read_data(lcb_server_t *c, int allow_read)
+static int do_read_data(lcb_server_t c, int allow_read)
 {
     /*
     ** Loop and try to parse the data... We don't want to lock up the
@@ -272,7 +272,7 @@ static int do_read_data(lcb_server_t *c, int allow_read)
     return 0;
 }
 
-static int do_send_data(lcb_server_t *c)
+static int do_send_data(lcb_server_t c)
 {
     while (c->output.nbytes > 0) {
         struct lcb_iovec_st iov[2];
@@ -307,7 +307,7 @@ void lcb_flush_buffers(lcb_t instance, const void *cookie)
 {
     lcb_size_t ii;
     for (ii = 0; ii < instance->nservers; ++ii) {
-        lcb_server_t *c = instance->servers + ii;
+        lcb_server_t c = instance->servers + ii;
         if (c->connected) {
             lcb_server_event_handler(c->sock,
                                      LCB_READ_EVENT | LCB_WRITE_EVENT,
@@ -319,7 +319,7 @@ void lcb_flush_buffers(lcb_t instance, const void *cookie)
 
 void lcb_server_event_handler(lcb_socket_t sock, short which, void *arg)
 {
-    lcb_server_t *c = arg;
+    lcb_server_t c = arg;
     (void)sock;
     if (which & LCB_WRITE_EVENT) {
         if (do_send_data(c) != 0) {
@@ -368,7 +368,7 @@ int lcb_has_data_in_buffers(lcb_t instance)
         return 1;
     }
     for (ii = 0; ii < instance->nservers; ++ii) {
-        lcb_server_t *c = instance->servers + ii;
+        lcb_server_t c = instance->servers + ii;
         if (c->cmd_log.nbytes || c->output.nbytes || c->input.nbytes ||
                 c->pending.nbytes || hashset_num_items(c->http_requests)) {
             return 1;

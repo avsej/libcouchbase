@@ -133,7 +133,7 @@ lcb_error_t lcb_observe(lcb_t instance,
 
     for (ii = 0; ii < instance->nservers; ++ii) {
         struct observe_st *rr = requests + ii;
-        lcb_server_t *server = instance->servers + ii;
+        lcb_server_t server = instance->servers + ii;
 
         if (rr->allocated) {
             char *tmp;

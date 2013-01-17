@@ -448,7 +448,7 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
     instance->weird_things = 0;
     num = (lcb_size_t)vbucket_config_get_num_servers(config);
     /* servers array should be freed in the caller */
-    instance->servers = calloc(num, sizeof(lcb_server_t));
+    instance->servers = calloc(num, sizeof(struct lcb_server_st));
     if (instance->servers == NULL) {
         return lcb_error_handler(instance, LCB_CLIENT_ENOMEM, "Failed to allocate memory");
     }
@@ -506,12 +506,12 @@ lcb_error_t lcb_apply_vbucket_config(lcb_t instance, VBUCKET_CONFIG_HANDLE confi
     return LCB_SUCCESS;
 }
 
-static void relocate_packets(lcb_server_t *src,
+static void relocate_packets(lcb_server_t src,
                              lcb_t dst_instance)
 {
     struct lcb_command_data_st ct;
     protocol_binary_request_header cmd;
-    lcb_server_t *dst;
+    lcb_server_t dst;
     lcb_size_t nbody, npacket;
     char *body;
     int idx;
@@ -571,7 +571,7 @@ static void lcb_update_serverlist(lcb_t instance)
     VBUCKET_CONFIG_HANDLE next_config, curr_config;
     VBUCKET_CONFIG_DIFF *diff = NULL;
     lcb_size_t nservers;
-    lcb_server_t *servers, *ss;
+    lcb_server_t servers, ss;
 
     curr_config = instance->vbucket_config;
     next_config = vbucket_config_create();

@@ -24,7 +24,7 @@
 
 #include "internal.h"
 
-void lcb_failout_observe_request(lcb_server_t *server,
+void lcb_failout_observe_request(lcb_server_t server,
                                  struct lcb_command_data_st *command_data,
                                  const char *packet,
                                  lcb_size_t npacket,
@@ -65,8 +65,7 @@ void lcb_failout_observe_request(lcb_server_t *server,
     }
 }
 
-
-void lcb_purge_single_server(lcb_server_t *server,
+void lcb_purge_single_server(lcb_server_t server,
                              lcb_error_t error)
 {
     protocol_binary_request_header req;
@@ -361,7 +360,7 @@ void lcb_purge_single_server(lcb_server_t *server,
     lcb_maybe_breakout(server->instance);
 }
 
-lcb_error_t lcb_failout_server(lcb_server_t *server,
+lcb_error_t lcb_failout_server(lcb_server_t server,
                                lcb_error_t error)
 {
     lcb_purge_single_server(server, error);
@@ -387,7 +386,7 @@ lcb_error_t lcb_failout_server(lcb_server_t *server,
     return error;
 }
 
-static void purge_http_request(lcb_server_t *server)
+static void purge_http_request(lcb_server_t server)
 {
     lcb_size_t ii;
     lcb_http_request_t *htitems;
@@ -418,7 +417,7 @@ static void purge_http_request(lcb_server_t *server)
  * Release all allocated resources for this server instance
  * @param server the server to destroy
  */
-void lcb_server_destroy(lcb_server_t *server)
+void lcb_server_destroy(lcb_server_t server)
 {
     /* Cancel all pending commands */
     if (server->cmd_log.nbytes) {
@@ -529,7 +528,7 @@ static int get_remote_address(lcb_socket_t sock,
  *
  * @param server the server object to auth agains
  */
-static void start_sasl_auth_server(lcb_server_t *server)
+static void start_sasl_auth_server(lcb_server_t server)
 {
     /* There is no point of calling sasl_list_mechs on the server
      * because we know that the server will reply with "PLAIN"
@@ -580,7 +579,7 @@ static void start_sasl_auth_server(lcb_server_t *server)
                                             server, lcb_server_event_handler);
 }
 
-void lcb_server_connected(lcb_server_t *server)
+void lcb_server_connected(lcb_server_t server)
 {
     server->connected = 1;
 
@@ -616,7 +615,7 @@ void lcb_server_connected(lcb_server_t *server)
     }
 }
 
-static void socket_connected(lcb_server_t *server)
+static void socket_connected(lcb_server_t server)
 {
     char local[NI_MAXHOST + NI_MAXSERV + 2];
     char remote[NI_MAXHOST + NI_MAXSERV + 2];
@@ -641,19 +640,19 @@ static void socket_connected(lcb_server_t *server)
     }
 }
 
-static void server_connect(lcb_server_t *server);
+static void server_connect(lcb_server_t server);
 
 
 static void server_connect_handler(lcb_socket_t sock, short which, void *arg)
 {
-    lcb_server_t *server = arg;
+    lcb_server_t server = arg;
     (void)sock;
     (void)which;
 
     server_connect(server);
 }
 
-static void server_connect(lcb_server_t *server)
+static void server_connect(lcb_server_t server)
 {
     int retry;
     int save_errno;
@@ -725,7 +724,7 @@ static void server_connect(lcb_server_t *server)
     return ;
 }
 
-void lcb_server_initialize(lcb_server_t *server, int servernum)
+void lcb_server_initialize(lcb_server_t server, int servernum)
 {
     /* Initialize all members */
     char *p;
@@ -763,7 +762,7 @@ void lcb_server_initialize(lcb_server_t *server, int servernum)
     server->sasl_conn = NULL;
 }
 
-void lcb_server_send_packets(lcb_server_t *server)
+void lcb_server_send_packets(lcb_server_t server)
 {
     if (server->pending.nbytes > 0 || server->output.nbytes > 0) {
         if (server->connected) {
@@ -787,7 +786,7 @@ void lcb_server_send_packets(lcb_server_t *server)
  *
  * Returns 0 on success
  */
-int lcb_server_purge_implicit_responses(lcb_server_t *c,
+int lcb_server_purge_implicit_responses(lcb_server_t c,
                                         lcb_uint32_t seqno,
                                         hrtime_t end)
 {

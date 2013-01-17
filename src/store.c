@@ -45,7 +45,7 @@ lcb_error_t lcb_store(lcb_t instance,
     }
 
     for (ii = 0; ii < num; ++ii) {
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_set req;
         lcb_size_t headersize;
         lcb_size_t bodylen;

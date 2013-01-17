@@ -846,7 +846,7 @@ static bool hash_impl(lcb_t instance, list<string> &keys)
     for (list<string>::iterator iter = keys.begin(); iter != keys.end(); ++iter) {
         int vbucket_id, idx;
         (void)vbucket_map(instance->vbucket_config, iter->c_str(), iter->length(), &vbucket_id, &idx);
-        lcb_server_t *server = instance->servers + idx;
+        lcb_server_t server = instance->servers + idx;
         cout << "\"" << *iter << "\"\tServer:\"" << server->authority << "\"";
         if (instance->dist_type == VBUCKET_DISTRIBUTION_VBUCKET) {
             cout << " vBucket:" << vbucket_id;

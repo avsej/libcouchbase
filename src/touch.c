@@ -37,7 +37,7 @@ lcb_error_t lcb_touch(lcb_t instance,
                       lcb_size_t num,
                       const lcb_touch_cmd_t *const *items)
 {
-    lcb_server_t *server = NULL;
+    lcb_server_t server = NULL;
     lcb_size_t ii;
     int vb;
     struct server_info_st *servers = NULL;

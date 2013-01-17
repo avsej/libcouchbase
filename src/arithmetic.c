@@ -42,7 +42,7 @@ lcb_error_t lcb_arithmetic(lcb_t instance,
     }
 
     for (ii = 0; ii < num; ++ii) {
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_incr req;
         int vb, idx;
         const void *key = items[ii]->v.v0.key;

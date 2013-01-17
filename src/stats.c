@@ -44,7 +44,7 @@ lcb_error_t lcb_server_stats(lcb_t instance,
     for (count = 0; count < num; ++count) {
         const void *arg = commands[count]->v.v0.name;
         lcb_size_t narg = commands[count]->v.v0.nname;
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_stats req;
         lcb_size_t ii;
 
@@ -98,7 +98,7 @@ lcb_error_t lcb_server_versions(lcb_t instance,
     }
 
     for (count = 0; count < num; ++count) {
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_version req;
         lcb_size_t ii;
 

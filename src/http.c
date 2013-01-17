@@ -147,7 +147,7 @@ static int request_valid(lcb_t instance, lcb_http_request_t req)
     } else {
         lcb_size_t ii;
         for (ii = 0; ii < instance->nservers; ++ii) {
-            lcb_server_t *server = instance->servers + ii;
+            lcb_server_t server = instance->servers + ii;
             if (hashset_is_member(server->http_requests, req)) {
                 return 1;
             }
@@ -346,7 +346,7 @@ static int request_do_write(lcb_http_request_t req)
 }
 
 void lcb_http_request_finish(lcb_t instance,
-                             lcb_server_t *server,
+                             lcb_server_t server,
                              lcb_http_request_t req,
                              lcb_error_t error)
 {
@@ -382,7 +382,7 @@ static void request_event_handler(lcb_socket_t sock, short which, void *arg)
 {
     lcb_http_request_t req = arg;
     lcb_t instance = req->instance;
-    lcb_server_t *server = req->server;
+    lcb_server_t server = req->server;
     lcb_ssize_t rv;
     int should_continue = 1;
     lcb_error_t err = LCB_SUCCESS;
@@ -515,11 +515,11 @@ static lcb_error_t request_connect(lcb_http_request_t req)
     return LCB_SUCCESS;
 }
 
-static lcb_server_t *get_view_node(lcb_t instance)
+static lcb_server_t get_view_node(lcb_t instance)
 {
     /* pick random server */
     lcb_size_t nn, nn_limit;
-    lcb_server_t *server;
+    lcb_server_t server;
 
     nn = (lcb_size_t)(gethrtime() >> 10) % instance->nservers;
     nn_limit = nn;
@@ -606,7 +606,7 @@ lcb_error_t lcb_make_http_request(lcb_t instance,
     req->on_data = instance->callbacks.http_data;
     switch (type) {
     case LCB_HTTP_TYPE_VIEW: {
-        lcb_server_t *server;
+        lcb_server_t server;
         if (instance->type != LCB_TYPE_BUCKET) {
             return lcb_synchandler_return(instance, LCB_EINVAL);
         }

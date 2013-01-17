@@ -71,7 +71,7 @@ lcb_error_t lcb_unlock(lcb_t instance,
     }
 
     for (ii = 0; ii < num; ++ii) {
-        lcb_server_t *server;
+        lcb_server_t server;
         protocol_binary_request_no_extras req;
         int vb, idx;
         const void *hashkey = items[ii]->v.v0.hashkey;
@@ -123,7 +123,7 @@ lcb_error_t lcb_get_replica(lcb_t instance,
                             lcb_size_t num,
                             const lcb_get_replica_cmd_t *const *items)
 {
-    lcb_server_t *server;
+    lcb_server_t server;
     protocol_binary_request_get req;
     int vb, idx;
     lcb_size_t ii, *affected_servers = NULL;
@@ -189,7 +189,7 @@ static lcb_error_t lcb_single_get(lcb_t instance,
                                   const void *command_cookie,
                                   const lcb_get_cmd_t *item)
 {
-    lcb_server_t *server;
+    lcb_server_t server;
     protocol_binary_request_gat req;
     int vb, idx;
     lcb_size_t nbytes;
@@ -261,7 +261,7 @@ static lcb_error_t lcb_multi_get(lcb_t instance,
                                  lcb_size_t num,
                                  const lcb_get_cmd_t *const *items)
 {
-    lcb_server_t *server = NULL;
+    lcb_server_t server = NULL;
     protocol_binary_request_noop noop;
     lcb_size_t ii, *affected_servers = NULL;
     struct server_info_st *servers = NULL;
