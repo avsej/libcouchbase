@@ -24,6 +24,12 @@
 extern "C" {
 #endif
 
+#ifdef _WIN32
+#define to_socket(s) ((SOCKET)s)
+#else
+#define to_socket(s) ((int)s)
+#endif
+
     LIBCOUCHBASE_API
     lcb_ssize_t lcb_io_common_recv(struct lcb_io_opt_st *iops,
                                    lcb_socket_t sock,

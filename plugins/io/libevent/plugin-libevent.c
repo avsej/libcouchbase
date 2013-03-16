@@ -37,6 +37,11 @@ struct libevent_cookie {
     int allocated;
 };
 
+struct event_cookie {
+    void (*handler)(lcb_socket_t sock, short which, void *data);
+    void *data;
+};
+
 
 #ifndef HAVE_LIBEVENT2
 /* libevent 1.x compatibility layer */
@@ -107,8 +112,25 @@ event_get_callback(const struct event *ev)
 
 static void *lcb_io_create_event(struct lcb_io_opt_st *iops)
 {
-    return event_new(((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                     INVALID_SOCKET, 0, NULL, NULL);
+    struct event *ev;
+    struct event_cookie *cookie;
+    cookie = calloc(1, sizeof (struct event_cookie));
+    if (cookie == NULL) {
+        return NULL;
+    }
+    ev = event_new(((struct libevent_cookie *)iops->v.v0.cookie)->base,
+                   INVALID_SOCKET, 0, NULL, cookie);
+    if (ev == NULL) {
+        free(cookie);
+        return NULL;
+    }
+    return ev;
+}
+
+static void handler_thunk(int sock, short which, void *data)
+{
+    struct event_cookie *cookie = data;
+    cookie->handler((lcb_socket_t)sock, which, cookie->data);
 }
 
 static int lcb_io_update_event(struct lcb_io_opt_st *iops,
@@ -120,9 +142,10 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
                                                short which,
                                                void *cb_data))
 {
+    struct event_cookie *cookie = event_get_callback_arg(event);
     flags |= EV_PERSIST;
     if (flags == event_get_events(event) &&
-            handler == event_get_callback(event)) {
+        handler == cookie->handler) {
         /* no change! */
         return 0;
     }
@@ -131,7 +154,10 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
         event_del(event);
     }
 
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base, sock, flags, handler, cb_data);
+    cookie->handler = handler;
+    cookie->data = cb_data;
+    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
+                 (evutil_socket_t)sock, flags, handler_thunk, cookie);
     return event_add(event, NULL);
 }
 
@@ -143,7 +169,8 @@ static void lcb_io_delete_timer(struct lcb_io_opt_st *iops,
     if (event_pending(event, EV_TIMEOUT, 0) != 0 && event_del(event) == -1) {
         iops->v.v0.error = EINVAL;
     }
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base, -1, 0, NULL, NULL);
+    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
+                 INVALID_SOCKET, 0, NULL, event_get_callback_arg(event));
 }
 
 static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
@@ -154,10 +181,11 @@ static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
                                                short which,
                                                void *cb_data))
 {
+    struct event_cookie *cookie = event_get_callback_arg(timer);
     short flags = EV_TIMEOUT | EV_PERSIST;
     struct timeval tmo;
     if (flags == event_get_events(timer) &&
-            handler == event_get_callback(timer)) {
+            handler == cookie->handler) {
         /* no change! */
         return 0;
     }
@@ -166,7 +194,10 @@ static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
         event_del(timer);
     }
 
-    event_assign(timer, ((struct libevent_cookie *)iops->v.v0.cookie)->base, -1, flags, handler, cb_data);
+    cookie->handler = handler;
+    cookie->data = cb_data;
+    event_assign(timer, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
+                 INVALID_SOCKET, flags, handler_thunk, cookie);
     tmo.tv_sec = usec / 1000000;
     tmo.tv_usec = usec % 1000000;
     return event_add(timer, &tmo);
@@ -191,7 +222,8 @@ static void lcb_io_delete_event(struct lcb_io_opt_st *iops,
     if (event_del(event) == -1) {
         iops->v.v0.error = EINVAL;
     }
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base, -1, 0, NULL, NULL);
+    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
+                 INVALID_SOCKET, 0, NULL, event_get_callback_arg(event));
 }
 
 static void lcb_io_stop_event_loop(struct lcb_io_opt_st *iops)

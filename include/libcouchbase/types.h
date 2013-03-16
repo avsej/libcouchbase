@@ -94,11 +94,7 @@ extern "C" {
         LCB_TYPE_CLUSTER = 0x01
     } lcb_type_t;
 
-#if defined(_WIN32) && defined(SOCKET)
-    typedef SOCKET lcb_socket_t;
-#else
-    typedef int lcb_socket_t;
-#endif
+    typedef intptr_t lcb_socket_t;
 
     typedef enum {
         LCB_IO_OPS_DEFAULT = 0x01,

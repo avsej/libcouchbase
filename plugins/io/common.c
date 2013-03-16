@@ -30,7 +30,7 @@ lcb_ssize_t lcb_io_common_recv(struct lcb_io_opt_st *iops,
                                lcb_size_t len,
                                int flags)
 {
-    lcb_ssize_t ret = recv(sock, buffer, len, flags);
+    lcb_ssize_t ret = recv(to_socket(sock), buffer, len, flags);
     if (ret < 0) {
         iops->v.v0.error = errno;
     }
@@ -57,7 +57,7 @@ lcb_ssize_t lcb_io_common_recvv(struct lcb_io_opt_st *iops,
     msg.msg_iov[0].iov_len = iov[0].iov_len;
     msg.msg_iov[1].iov_base = iov[1].iov_base;
     msg.msg_iov[1].iov_len = iov[1].iov_len;
-    ret = recvmsg(sock, &msg, 0);
+    ret = recvmsg(to_socket(sock), &msg, 0);
 
     if (ret < 0) {
         iops->v.v0.error = errno;
@@ -73,7 +73,7 @@ lcb_ssize_t lcb_io_common_send(struct lcb_io_opt_st *iops,
                                lcb_size_t len,
                                int flags)
 {
-    lcb_ssize_t ret = send(sock, msg, len, flags);
+    lcb_ssize_t ret = send(to_socket(sock), msg, len, flags);
     if (ret < 0) {
         iops->v.v0.error = errno;
     }
@@ -95,7 +95,7 @@ lcb_ssize_t lcb_io_common_sendv(struct lcb_io_opt_st *iops,
     assert(offsetof(struct iovec, iov_len) == offsetof(struct lcb_iovec_st, iov_len));
     msg.msg_iov = (struct iovec *)iov;
     msg.msg_iovlen = niov;
-    ret = sendmsg(sock, &msg, 0);
+    ret = sendmsg(to_socket(sock), &msg, 0);
 
     if (ret < 0) {
         iops->v.v0.error = errno;
@@ -107,12 +107,12 @@ static int make_socket_nonblocking(lcb_socket_t sock)
 {
 #ifdef _WIN32
     u_long nonblocking = 1;
-    if (ioctlsocket(sock, FIONBIO, &nonblocking) == SOCKET_ERROR) {
+    if (ioctlsocket((SOCKET)sock, FIONBIO, &nonblocking) == SOCKET_ERROR) {
         return -1;
     }
 #else
     int flags;
-    if ((flags = fcntl(sock, F_GETFL, NULL)) < 0) {
+    if ((flags = fcntl((int)sock, F_GETFL, NULL)) < 0) {
         return -1;
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -148,10 +148,10 @@ LIBCOUCHBASE_API
 void lcb_io_common_close(struct lcb_io_opt_st *iops,
                          lcb_socket_t sock)
 {
-#ifndef _WIN32
-    (void)close(sock);
+#ifdef _WIN32
+    (void)closesocket((SOCKET)sock);
 #else
-    (void)closesocket(sock);
+    (void)close((int)sock);
 #endif
     (void)iops;
 }
@@ -162,7 +162,7 @@ int lcb_io_common_connect(struct lcb_io_opt_st *iops,
                           const struct sockaddr *name,
                           unsigned int namelen)
 {
-    int ret = connect(sock, name, (socklen_t)namelen);
+    int ret = connect(to_socket(sock), name, (socklen_t)namelen);
     if (ret < 0) {
         iops->v.v0.error = errno;
     }

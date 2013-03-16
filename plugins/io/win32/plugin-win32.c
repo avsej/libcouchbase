@@ -60,7 +60,7 @@ struct winsock_io_cookie {
 
 #include "event_lists.h"
 
-static int getError(lcb_socket_t sock)
+static int getError(SOCKET sock)
 {
     DWORD error = WSAGetLastError();
     int ext = 0;
@@ -97,11 +97,12 @@ static int getError(lcb_socket_t sock)
 }
 
 static lcb_ssize_t lcb_io_recv(struct lcb_io_opt_st *iops,
-                               lcb_socket_t sock,
+                               lcb_socket_t lcb_sock,
                                void *buffer,
                                lcb_size_t len,
                                int flags)
 {
+    SOCKET sock = (SOCKET)lcb_sock;
     DWORD fl = 0;
     DWORD nr;
     WSABUF wsabuf = { (ULONG)len, buffer };
@@ -121,10 +122,11 @@ static lcb_ssize_t lcb_io_recv(struct lcb_io_opt_st *iops,
 }
 
 static lcb_ssize_t lcb_io_recvv(struct lcb_io_opt_st *iops,
-                                lcb_socket_t sock,
+                                lcb_socket_t lcb_sock,
                                 struct lcb_iovec_st *iov,
                                 lcb_size_t niov)
 {
+    SOCKET sock = (SOCKET)lcb_sock;
     DWORD fl = 0;
     DWORD nr;
     WSABUF wsabuf[2];
@@ -151,11 +153,12 @@ static lcb_ssize_t lcb_io_recvv(struct lcb_io_opt_st *iops,
 
 
 static lcb_ssize_t lcb_io_send(struct lcb_io_opt_st *iops,
-                               lcb_socket_t sock,
+                               lcb_socket_t lcb_sock,
                                const void *msg,
                                lcb_size_t len,
                                int flags)
 {
+    SOCKET sock = (SOCKET)lcb_sock;
     DWORD fl = 0;
     DWORD nw;
     WSABUF wsabuf = { (ULONG)len, (char *)msg };
@@ -174,6 +177,7 @@ static lcb_ssize_t lcb_io_sendv(struct lcb_io_opt_st *iops,
                                 struct lcb_iovec_st *iov,
                                 lcb_size_t niov)
 {
+    SOCKET sock = (SOCKET)lcb_sock;
     DWORD fl = 0;
     DWORD nw;
     WSABUF wsabuf[2];
@@ -198,7 +202,7 @@ static lcb_socket_t lcb_io_socket(struct lcb_io_opt_st *iops,
                                   int type,
                                   int protocol)
 {
-    lcb_socket_t sock = WSASocket(domain, type, protocol, NULL, 0, 0);
+    SOCKET sock = WSASocket(domain, type, protocol, NULL, 0, 0);
     if (sock == INVALID_SOCKET) {
         iops->v.v0.error = getError(sock);
     } else {
@@ -210,21 +214,22 @@ static lcb_socket_t lcb_io_socket(struct lcb_io_opt_st *iops,
         }
     }
 
-    return sock;
+    return (lcb_socket_t)sock;
 }
 
 static void lcb_io_close(struct lcb_io_opt_st *iops,
                          lcb_socket_t sock)
 {
     (void)iops;
-    closesocket(sock);
+    closesocket((SOCKET)sock);
 }
 
 static int lcb_io_connect(struct lcb_io_opt_st *iops,
-                          lcb_socket_t sock,
+                          lcb_socket_t lcb_sock,
                           const struct sockaddr *name,
                           unsigned int namelen)
 {
+    SOCKET sock = (SOCKET)lcb_sock;
     int ret = WSAConnect(sock, name, (int)namelen, NULL, NULL, NULL, NULL);
     if (ret == SOCKET_ERROR) {
         iops->v.v0.error = getError(sock);
@@ -253,7 +258,7 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
 {
     int mask = 0;
     struct winsock_event *ev = event;
-    ev->sock = sock;
+    ev->sock = (SOCKET)sock;
     ev->handler = handler;
     ev->cb_data = cb_data;
     ev->flags = flags;
