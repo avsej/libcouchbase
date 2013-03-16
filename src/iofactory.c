@@ -60,6 +60,8 @@ lcb_error_t lcb_destroy_io_ops(lcb_io_opt_t io)
 }
 #else
 
+#include "plugins/io/common.h"
+
 typedef lcb_error_t (*create_func_t)(int version, lcb_io_opt_t *io, const void *cookie);
 
 struct plugin_st {
@@ -242,6 +244,28 @@ static lcb_error_t create_v1(lcb_io_opt_t *io,
         if (iop->version < 0 || iop->version > 0) {
             lcb_destroy_io_ops(iop);
             return LCB_PLUGIN_VERSION_MISMATCH;
+        }
+        /* allow to reuse common functions */
+        if (iop->v.v0.recv == NULL) {
+            iop->v.v0.recv = lcb_io_common_recv;
+        }
+        if (iop->v.v0.send == NULL) {
+            iop->v.v0.send = lcb_io_common_send;
+        }
+        if (iop->v.v0.recvv == NULL) {
+            iop->v.v0.recvv = lcb_io_common_recvv;
+        }
+        if (iop->v.v0.sendv == NULL) {
+            iop->v.v0.sendv = lcb_io_common_sendv;
+        }
+        if (iop->v.v0.socket == NULL) {
+            iop->v.v0.socket = lcb_io_common_socket;
+        }
+        if (iop->v.v0.close == NULL) {
+            iop->v.v0.close = lcb_io_common_close;
+        }
+        if (iop->v.v0.connect == NULL) {
+            iop->v.v0.connect = lcb_io_common_connect;
         }
     }
 

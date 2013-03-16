@@ -227,7 +227,7 @@ endif
 
 endif
 
-libcouchbase_la_SOURCES += src/iofactory.c
+libcouchbase_la_SOURCES += src/iofactory.c plugins/io/common.c
 if HAVE_WINSOCK2
 if !HAVE_LIBEVENT
 libcouchbase_la_SOURCES += plugins/io/win32/plugin-win32.c
