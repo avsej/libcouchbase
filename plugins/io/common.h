@@ -66,6 +66,17 @@ extern "C" {
     void lcb_io_common_close(struct lcb_io_opt_st *iops,
                              lcb_socket_t sock);
 
+    /**
+     * This function will try to get a socket, and return it.
+     * If there are no more sockets left, iops->v.v0.error is still 0, but
+     * the return is INVALID_SOCKET.
+     *
+     * This function will 'advance' the current addrinfo structure, as well.
+     */
+    LIBCOUCHBASE_API
+    lcb_socket_t lcb_io_common_ai2sock(struct lcb_io_opt_st *iops,
+                                       struct addrinfo **ai);
+
     LIBCOUCHBASE_API
     int lcb_io_common_connect(struct lcb_io_opt_st *iops,
                               lcb_socket_t sock,

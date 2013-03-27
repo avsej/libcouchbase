@@ -455,24 +455,18 @@ static void request_connected(lcb_http_request_t req)
 static lcb_error_t request_connect(lcb_http_request_t req)
 {
     int retry;
-    int save_errno;
 
     do {
         if (req->sock == INVALID_SOCKET) {
             /* Try to get a socket.. */
-            req->sock = lcb_gai2sock(req->instance,
-                                     &req->curr_ai,
-                                     &save_errno);
+            req->sock = req->io->v.v0.ai2sock(req->io, &req->curr_ai);
         }
-
         if (req->curr_ai == NULL) {
             return LCB_CONNECT_ERROR;
         }
 
         retry = 0;
-        if (req->io->v.v0.connect(req->io,
-                                  req->sock,
-                                  req->curr_ai->ai_addr,
+        if (req->io->v.v0.connect(req->io, req->sock, req->curr_ai->ai_addr,
                                   (unsigned int)req->curr_ai->ai_addrlen) == 0) {
             /* connected */
             request_connected(req);

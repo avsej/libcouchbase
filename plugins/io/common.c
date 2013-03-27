@@ -157,6 +157,25 @@ void lcb_io_common_close(struct lcb_io_opt_st *iops,
 }
 
 LIBCOUCHBASE_API
+lcb_socket_t lcb_io_common_ai2sock(struct lcb_io_opt_st *iops,
+                                   struct addrinfo **ai)
+{
+    lcb_socket_t ret = INVALID_SOCKET;
+    iops->v.v0.error = 0;
+
+    for (; *ai; *ai = (*ai)->ai_next) {
+        ret = iops->v.v0.socket(iops,
+                                (*ai)->ai_family,
+                                (*ai)->ai_socktype,
+                                (*ai)->ai_protocol);
+        if (ret != INVALID_SOCKET) {
+            return ret;
+        }
+    }
+    return ret;
+}
+
+LIBCOUCHBASE_API
 int lcb_io_common_connect(struct lcb_io_opt_st *iops,
                           lcb_socket_t sock,
                           const struct sockaddr *name,

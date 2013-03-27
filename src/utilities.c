@@ -142,32 +142,3 @@ void lcb_sockconn_errinfo(int connerr,
     snprintf(buf, nbuf, "Failed to connect to \"%s:%s\": %s",
              hostname, port, errextra);
 }
-
-/**
- * This function will try to get a socket, and return it.
- * If there are no more sockets left, connerr is still 0, but
- * the return is INVALID_SOCKET.
- *
- * This function will 'advance' the current addrinfo structure, as well.
- */
-lcb_socket_t lcb_gai2sock(lcb_t instance, struct addrinfo **ai,
-                          int *connerr)
-{
-    lcb_socket_t ret = INVALID_SOCKET;
-    *connerr = 0;
-
-    for (; *ai; *ai = (*ai)->ai_next) {
-
-        ret = instance->io->v.v0.socket(instance->io,
-                                        (*ai)->ai_family,
-                                        (*ai)->ai_socktype,
-                                        (*ai)->ai_protocol);
-        if (ret != INVALID_SOCKET) {
-            return ret;
-        } else {
-            *connerr = instance->io->v.v0.error;
-        }
-    }
-
-    return ret;
-}

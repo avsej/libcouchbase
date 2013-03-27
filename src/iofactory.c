@@ -264,6 +264,9 @@ static lcb_error_t create_v1(lcb_io_opt_t *io,
         if (iop->v.v0.close == NULL) {
             iop->v.v0.close = lcb_io_common_close;
         }
+        if (iop->v.v0.ai2sock == NULL) {
+            iop->v.v0.ai2sock = lcb_io_common_ai2sock;
+        }
         if (iop->v.v0.connect == NULL) {
             iop->v.v0.connect = lcb_io_common_connect;
         }

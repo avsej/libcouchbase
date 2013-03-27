@@ -30,6 +30,11 @@
 #error "Include libcouchbase/couchbase.h instead"
 #endif
 
+/* XXX hack needed for struct addrinfo */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -197,6 +202,11 @@ extern "C" {
                                      void *event);
                 void (*stop_event_loop)(struct lcb_io_opt_st *iops);
                 void (*run_event_loop)(struct lcb_io_opt_st *iops);
+
+                /* FIXME v1 */
+                lcb_socket_t (*ai2sock)(struct lcb_io_opt_st *iops,
+                                        struct addrinfo **ai);
+
             } v0;
         } v;
     };

@@ -1004,13 +1004,11 @@ static void lcb_instance_connect_handler(lcb_socket_t sock,
     lcb_t instance = arg;
     int retry;
     lcb_connect_status_t connstatus = LCB_CONNECT_OK;
-    int save_errno;
+
     do {
         if (instance->sock == INVALID_SOCKET) {
             /* Try to get a socket.. */
-            instance->sock = lcb_gai2sock(instance,
-                                          &instance->curr_ai,
-                                          &save_errno);
+            instance->sock = instance->io->v.v0.ai2sock(instance->io, &instance->curr_ai);
             /* Reset the stream state, we run this only during a new socket. */
             lcb_instance_reset_stream_state(instance);
         }
@@ -1018,7 +1016,7 @@ static void lcb_instance_connect_handler(lcb_socket_t sock,
         if (instance->curr_ai == NULL) {
             char errinfo[1024];
             lcb_error_t our_errno;
-            lcb_sockconn_errinfo(save_errno,
+            lcb_sockconn_errinfo(instance->io->v.v0.error,
                                  instance->host,
                                  instance->port,
                                  instance->ai,
@@ -1037,9 +1035,7 @@ static void lcb_instance_connect_handler(lcb_socket_t sock,
             lcb_instance_connected(instance);
             return ;
         } else {
-            save_errno = instance->io->v.v0.error;
-            connstatus = lcb_connect_status(save_errno);
-
+            connstatus = lcb_connect_status(instance->io->v.v0.error);
             switch (connstatus) {
             case LCB_CONNECT_EINTR:
                 retry = 1;

@@ -550,18 +550,15 @@ static void server_connect_handler(lcb_socket_t sock, short which, void *arg)
 static void server_connect(lcb_server_t server)
 {
     int retry;
-    int save_errno;
+    lcb_io_opt_t io = server->instance->io;
 
     do {
         if (server->sock == INVALID_SOCKET) {
             /* Try to get a socket.. */
-            server->sock = lcb_gai2sock(server->instance,
-                                        &server->curr_ai,
-                                        &save_errno);
+            server->sock = io->v.v0.ai2sock(io, &server->curr_ai);
         }
-
         if (server->curr_ai == NULL) {
-            /*TODO: Maybe check save_errno now? */
+            /*TODO: Maybe check io->v.v0.error now? */
 
             /* this means we're not going to retry!! add an error here! */
             lcb_failout_server(server, LCB_CONNECT_ERROR);
@@ -569,16 +566,13 @@ static void server_connect(lcb_server_t server)
         }
 
         retry = 0;
-        if (server->instance->io->v.v0.connect(server->instance->io,
-                                               server->sock,
-                                               server->curr_ai->ai_addr,
-                                               (unsigned int)server->curr_ai->ai_addrlen) == 0) {
+        if (io->v.v0.connect(io, server->sock, server->curr_ai->ai_addr,
+                             (unsigned int)server->curr_ai->ai_addrlen) == 0) {
             /* connected */
             socket_connected(server);
             return ;
         } else {
-            lcb_connect_status_t connstatus =
-                lcb_connect_status(server->instance->io->v.v0.error);
+            lcb_connect_status_t connstatus = lcb_connect_status(io->v.v0.error);
             switch (connstatus) {
             case LCB_CONNECT_EINTR:
                 retry = 1;
@@ -587,12 +581,9 @@ static void server_connect(lcb_server_t server)
                 socket_connected(server);
                 return ;
             case LCB_CONNECT_EINPROGRESS: /*first call to connect*/
-                server->instance->io->v.v0.update_event(server->instance->io,
-                                                        server->sock,
-                                                        server->event,
-                                                        LCB_WRITE_EVENT,
-                                                        server,
-                                                        server_connect_handler);
+                io->v.v0.update_event(io, server->sock, server->event,
+                                      LCB_WRITE_EVENT, server,
+                                      server_connect_handler);
                 return ;
             case LCB_CONNECT_EALREADY: /* Subsequent calls to connect */
                 return ;
@@ -601,10 +592,8 @@ static void server_connect(lcb_server_t server)
                 if (server->curr_ai->ai_next) {
                     retry = 1;
                     server->curr_ai = server->curr_ai->ai_next;
-                    server->instance->io->v.v0.delete_event(server->instance->io,
-                                                            server->sock,
-                                                            server->event);
-                    server->instance->io->v.v0.close(server->instance->io, server->sock);
+                    io->v.v0.delete_event(io, server->sock, server->event);
+                    io->v.v0.close(io, server->sock);
                     server->sock = INVALID_SOCKET;
                     break;
                 } /* Else, we fallthrough */
