@@ -149,6 +149,17 @@ extern "C" {
                 /** A cookie passed directly down to the underlying io ops */
                 void *cookie;
             } v1;
+            struct {
+                /**
+                 * The pointer to function. Usefule when adding
+                 * -rdynamic isn't acceptable solution
+                 */
+                lcb_error_t (*create)(int version,
+                                      lcb_io_opt_t *io,
+                                      const void *cookie);
+                /** A cookie passed directly down to the underlying io ops */
+                void *cookie;
+            } v2;
         } v;
     };
 

@@ -76,7 +76,9 @@ static lcb_error_t get_create_func(const char *image,
                                    const char *symbol,
                                    struct plugin_st *plugin)
 {
-    void *dlhandle = dlopen(image, RTLD_NOW | RTLD_LOCAL);
+    void *dlhandle;
+    fprintf(stderr, "image: %s, symbol: %s\n", image, symbol);
+    dlhandle = dlopen(image, RTLD_NOW | RTLD_LOCAL);
     if (dlhandle == NULL) {
         return LCB_DLOPEN_FAILED;
     }
@@ -106,6 +108,9 @@ static lcb_error_t create_v0(lcb_io_opt_t *io,
                              const struct lcb_create_io_ops_st *options);
 
 static lcb_error_t create_v1(lcb_io_opt_t *io,
+                             const struct lcb_create_io_ops_st *options);
+
+static lcb_error_t create_v2(lcb_io_opt_t *io,
                              const struct lcb_create_io_ops_st *options);
 
 #define USE_PLUGIN(OPTS, PLUGIN_NAME, PLUGIN_CONST)             \
@@ -174,6 +179,8 @@ lcb_error_t lcb_create_io_ops(lcb_io_opt_t *io,
         return create_v0(io, &options);
     case 1:
         return create_v1(io, &options);
+    case 2:
+        return create_v2(io, &options);
     default:
         return LCB_NOT_SUPPORTED;
     }
@@ -215,6 +222,34 @@ static lcb_error_t create_v0(lcb_io_opt_t *io,
 }
 #undef PLUGIN_SO
 
+static void apply_io_defaults(lcb_io_opt_t io) {
+    /* allow to reuse common functions */
+    if (io->v.v0.recv == NULL) {
+        io->v.v0.recv = lcb_io_common_recv;
+    }
+    if (io->v.v0.send == NULL) {
+        io->v.v0.send = lcb_io_common_send;
+    }
+    if (io->v.v0.recvv == NULL) {
+        io->v.v0.recvv = lcb_io_common_recvv;
+    }
+    if (io->v.v0.sendv == NULL) {
+        io->v.v0.sendv = lcb_io_common_sendv;
+    }
+    if (io->v.v0.socket == NULL) {
+        io->v.v0.socket = lcb_io_common_socket;
+    }
+    if (io->v.v0.close == NULL) {
+        io->v.v0.close = lcb_io_common_close;
+    }
+    if (io->v.v0.ai2sock == NULL) {
+        io->v.v0.ai2sock = lcb_io_common_ai2sock;
+    }
+    if (io->v.v0.connect == NULL) {
+        io->v.v0.connect = lcb_io_common_connect;
+    }
+}
+
 static lcb_error_t create_v1(lcb_io_opt_t *io,
                              const struct lcb_create_io_ops_st *options)
 {
@@ -245,31 +280,28 @@ static lcb_error_t create_v1(lcb_io_opt_t *io,
             lcb_destroy_io_ops(iop);
             return LCB_PLUGIN_VERSION_MISMATCH;
         }
-        /* allow to reuse common functions */
-        if (iop->v.v0.recv == NULL) {
-            iop->v.v0.recv = lcb_io_common_recv;
+        apply_io_defaults(iop);
+    }
+
+    return LCB_SUCCESS;
+}
+
+static lcb_error_t create_v2(lcb_io_opt_t *io,
+                             const struct lcb_create_io_ops_st *options)
+{
+    lcb_error_t ret;
+
+    ret = options->v.v2.create(0, io, options->v.v2.cookie);
+    if (ret != LCB_SUCCESS) {
+        return ret;
+    } else {
+        lcb_io_opt_t iop = *io;
+        /* check if plugin select compatible version */
+        if (iop->version < 0 || iop->version > 0) {
+            lcb_destroy_io_ops(iop);
+            return LCB_PLUGIN_VERSION_MISMATCH;
         }
-        if (iop->v.v0.send == NULL) {
-            iop->v.v0.send = lcb_io_common_send;
-        }
-        if (iop->v.v0.recvv == NULL) {
-            iop->v.v0.recvv = lcb_io_common_recvv;
-        }
-        if (iop->v.v0.sendv == NULL) {
-            iop->v.v0.sendv = lcb_io_common_sendv;
-        }
-        if (iop->v.v0.socket == NULL) {
-            iop->v.v0.socket = lcb_io_common_socket;
-        }
-        if (iop->v.v0.close == NULL) {
-            iop->v.v0.close = lcb_io_common_close;
-        }
-        if (iop->v.v0.ai2sock == NULL) {
-            iop->v.v0.ai2sock = lcb_io_common_ai2sock;
-        }
-        if (iop->v.v0.connect == NULL) {
-            iop->v.v0.connect = lcb_io_common_connect;
-        }
+        apply_io_defaults(iop);
     }
 
     return LCB_SUCCESS;
