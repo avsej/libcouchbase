@@ -32,16 +32,18 @@
 #undef NDEBUG
 #include <assert.h>
 
-struct libevent_cookie {
+struct lcb_libevent_st {
     struct event_base *base;
     int allocated;
 };
+typedef struct lcb_libevent_st lcb_libevent_t;
 
-struct event_cookie {
-    void (*handler)(lcb_socket_t sock, short which, void *data);
+struct event_cookie_st {
+    lcb_common_context_t *ctx;
+    lcb_io_plugin_event_cb handler;
     void *data;
 };
-
+typedef struct event_cookie_st event_cookie_t;
 
 #ifndef HAVE_LIBEVENT2
 /* libevent 1.x compatibility layer */
@@ -110,16 +112,17 @@ event_get_callback(const struct event *ev)
 }
 #endif
 
-static void *lcb_io_create_event(struct lcb_io_opt_st *iops)
+static void *lcb_io_create_event(lcb_io_opt_t io)
 {
+    lcb_libevent_t *libevent = io->v.v0.cookie;
     struct event *ev;
-    struct event_cookie *cookie;
-    cookie = calloc(1, sizeof(struct event_cookie));
+    event_cookie_t *cookie;
+
+    cookie = calloc(1, sizeof(event_cookie_t));
     if (cookie == NULL) {
         return NULL;
     }
-    ev = event_new(((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                   INVALID_SOCKET, 0, NULL, cookie);
+    ev = event_new(libevent->base, INVALID_SOCKET, 0, NULL, cookie);
     if (ev == NULL) {
         free(cookie);
         return NULL;
@@ -129,11 +132,12 @@ static void *lcb_io_create_event(struct lcb_io_opt_st *iops)
 
 static void handler_thunk(int sock, short which, void *data)
 {
-    struct event_cookie *cookie = data;
-    cookie->handler((lcb_socket_t)sock, which, cookie->data);
+    event_cookie_t *cookie = data;
+    cookie->handler(to_socket(cookie->ctx), which, cookie->data);
+    (void)sock;
 }
 
-static int lcb_io_update_event(struct lcb_io_opt_st *iops,
+static int lcb_io_update_event(lcb_io_opt_t io,
                                lcb_socket_t sock,
                                void *event,
                                short flags,
@@ -142,7 +146,10 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
                                                short which,
                                                void *cb_data))
 {
-    struct event_cookie *cookie = event_get_callback_arg(event);
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+    event_cookie_t *cookie = event_get_callback_arg(event);
+    lcb_common_context_t *ctx = from_socket(sock);
+
     flags |= EV_PERSIST;
     if (flags == event_get_events(event) &&
             handler == cookie->handler) {
@@ -154,36 +161,38 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
         event_del(event);
     }
 
+    cookie->ctx = ctx;
     cookie->handler = handler;
     cookie->data = cb_data;
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                 (evutil_socket_t)sock, flags, handler_thunk, cookie);
+    event_assign(event, libevent->base, (evutil_socket_t)ctx->sock,
+                 flags, handler_thunk, cookie);
     return event_add(event, NULL);
 }
 
 
-static void lcb_io_delete_timer(struct lcb_io_opt_st *iops,
+static void lcb_io_delete_timer(lcb_io_opt_t io,
                                 void *event)
 {
-    (void)iops;
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+
     if (event_pending(event, EV_TIMEOUT, 0) != 0 && event_del(event) == -1) {
-        iops->v.v0.error = EINVAL;
+        io->v.v0.error = EINVAL;
     }
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                 INVALID_SOCKET, 0, NULL, event_get_callback_arg(event));
+    event_assign(event, libevent->base, INVALID_SOCKET, 0, NULL,
+                 event_get_callback_arg(event));
 }
 
-static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
+static int lcb_io_update_timer(lcb_io_opt_t io,
                                void *timer,
                                lcb_uint32_t usec,
                                void *cb_data,
-                               void (*handler)(lcb_socket_t sock,
-                                               short which,
-                                               void *cb_data))
+                               lcb_io_plugin_event_cb handler)
 {
-    struct event_cookie *cookie = event_get_callback_arg(timer);
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+    event_cookie_t *cookie = event_get_callback_arg(timer);
     short flags = EV_TIMEOUT | EV_PERSIST;
     struct timeval tmo;
+
     if (flags == event_get_events(timer) &&
             handler == cookie->handler) {
         /* no change! */
@@ -194,63 +203,68 @@ static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
         event_del(timer);
     }
 
+    cookie->ctx = from_socket(INVALID_SOCKET);
     cookie->handler = handler;
     cookie->data = cb_data;
-    event_assign(timer, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                 INVALID_SOCKET, flags, handler_thunk, cookie);
+    event_assign(timer, libevent->base, INVALID_SOCKET, flags,
+                 handler_thunk, cookie);
     tmo.tv_sec = usec / 1000000;
     tmo.tv_usec = usec % 1000000;
     return event_add(timer, &tmo);
 }
 
-static void lcb_io_destroy_event(struct lcb_io_opt_st *iops,
+static void lcb_io_destroy_event(lcb_io_opt_t io,
                                  void *event)
 {
-    (void)iops;
     if (event_pending(event, EV_READ | EV_WRITE | EV_TIMEOUT, 0)) {
         event_del(event);
     }
     event_free(event);
+    (void)io;
 }
 
-static void lcb_io_delete_event(struct lcb_io_opt_st *iops,
+static void lcb_io_delete_event(lcb_io_opt_t io,
                                 lcb_socket_t sock,
                                 void *event)
 {
-    (void)iops;
-    (void)sock;
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+
     if (event_del(event) == -1) {
-        iops->v.v0.error = EINVAL;
+        io->v.v0.error = EINVAL;
     }
-    event_assign(event, ((struct libevent_cookie *)iops->v.v0.cookie)->base,
-                 INVALID_SOCKET, 0, NULL, event_get_callback_arg(event));
+    event_assign(event, libevent->base, INVALID_SOCKET, 0, NULL,
+                 event_get_callback_arg(event));
+    (void)sock;
 }
 
-static void lcb_io_stop_event_loop(struct lcb_io_opt_st *iops)
+static void lcb_io_stop_event_loop(lcb_io_opt_t io)
 {
-    event_base_loopbreak(((struct libevent_cookie *)iops->v.v0.cookie)->base);
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+    event_base_loopbreak(libevent->base);
 }
 
-static void lcb_io_run_event_loop(struct lcb_io_opt_st *iops)
+static void lcb_io_run_event_loop(lcb_io_opt_t io)
 {
-    event_base_loop(((struct libevent_cookie *)iops->v.v0.cookie)->base, 0);
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+    event_base_loop(libevent->base, 0);
 }
 
-static void lcb_destroy_io_opts(struct lcb_io_opt_st *iops)
+static void lcb_destroy_io_opts(lcb_io_opt_t io)
 {
-    if (((struct libevent_cookie *)iops->v.v0.cookie)->allocated) {
-        event_base_free(((struct libevent_cookie *)iops->v.v0.cookie)->base);
+    lcb_libevent_t *libevent = io->v.v0.cookie;
+    if (libevent->allocated) {
+        event_base_free(libevent->base);
     }
-    free(iops->v.v0.cookie);
-    free(iops);
+    free(io->v.v0.cookie);
+    free(io);
 }
 
 LIBCOUCHBASE_API
 lcb_error_t lcb_create_libevent_io_opts(int version, lcb_io_opt_t *io, void *arg)
 {
     struct event_base *base = arg;
-    struct lcb_io_opt_st *ret;
-    struct libevent_cookie *cookie;
+    lcb_io_opt_t ret;
+    struct lcb_libevent_st *cookie;
     if (version != 0) {
         return LCB_PLUGIN_VERSION_MISMATCH;
     }
@@ -263,7 +277,7 @@ lcb_error_t lcb_create_libevent_io_opts(int version, lcb_io_opt_t *io, void *arg
         return LCB_CLIENT_ENOMEM;
     }
 
-    /* setup io iops! */
+    /* setup io io! */
     ret->version = 0;
     ret->dlhandle = NULL;
     ret->destructor = lcb_destroy_io_opts;

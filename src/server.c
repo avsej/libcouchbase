@@ -202,9 +202,9 @@ static lcb_error_t lcb_purge_packet(lcb_server_t server,
         TRACE_OBSERVE_END(packet->opaque, packet->vbucket, packet->opcode, error);
         instance->callbacks.observe(instance, packet->cookie, error, &resp.observe);
         /* FIXME */
-/*            lcb_failout_observe_request(server, &ct, packet,*/
-/*                                        sizeof(req.bytes) + ntohl(req.request.bodylen),*/
-/*                                        error);*/
+        /*            lcb_failout_observe_request(server, &ct, packet,*/
+        /*                                        sizeof(req.bytes) + ntohl(req.request.bodylen),*/
+        /*                                        error);*/
         break;
     case PROTOCOL_BINARY_CMD_SASL_LIST_MECHS:
     case PROTOCOL_BINARY_CMD_SASL_AUTH:
@@ -317,7 +317,7 @@ void lcb_server_destroy(lcb_server_t server)
     }
 
     free(server->iov);
-/*    server->iov = NULL;*/
+    server->iov = NULL;
 
     /* Delete the event structure itself */
     if (server->event) {
@@ -774,16 +774,15 @@ int lcb_server_purge_implicit_responses(lcb_server_t server,
             break;
         case CMD_OBSERVE:
             lcb_purge_packet(server, pkt, LCB_SERVER_BUG);
-/*            lcb_failout_observe_request(c, &ct, packet,*/
-/*                                        sizeof(req.bytes) + ntohl(req.request.bodylen),*/
-/*                                        LCB_SERVER_BUG);*/
-        default:
-            {
-                char errinfo[128] = { '\0' };
-                snprintf(errinfo, 128, "Unknown implicit send message op=0x%02x", pkt->opcode);
-                lcb_error_handler(server->instance, LCB_EINTERNAL, errinfo);
-                return -1;
-            }
+            /*            lcb_failout_observe_request(c, &ct, packet,*/
+            /*                                        sizeof(req.bytes) + ntohl(req.request.bodylen),*/
+            /*                                        LCB_SERVER_BUG);*/
+        default: {
+            char errinfo[128] = { '\0' };
+            snprintf(errinfo, 128, "Unknown implicit send message op=0x%02x", pkt->opcode);
+            lcb_error_handler(server->instance, LCB_EINTERNAL, errinfo);
+            return -1;
+        }
         }
         lcb_packet_queue_remove(pkt);
         pkt = root->next;

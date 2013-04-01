@@ -107,10 +107,8 @@ lcb_ssize_t lcb_io_common_sendv(lcb_io_opt_t io,
     return ret;
 }
 
-static int make_socket_nonblocking(lcb_socket_t sock)
+static int make_socket_nonblocking(lcb_common_context_t *ctx)
 {
-    lcb_common_context_t *ctx = from_socket(sock);
-
 #ifdef _WIN32
     u_long nonblocking = 1;
     if (ioctlsocket(ctx->sock, FIONBIO, &nonblocking) == SOCKET_ERROR) {
@@ -121,7 +119,7 @@ static int make_socket_nonblocking(lcb_socket_t sock)
     if ((flags = fcntl(ctx->sock, F_GETFL, NULL)) < 0) {
         return -1;
     }
-    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(ctx->sock, F_SETFL, flags | O_NONBLOCK) == -1) {
         return -1;
     }
 #endif
@@ -141,9 +139,10 @@ lcb_socket_t lcb_io_common_socket(lcb_io_opt_t io,
     ctx->sock = socket(domain, type, protocol);
 
     if (ctx->sock == INVALID_SOCKET) {
+        free(ctx);
         io->v.v0.error = errno;
     } else {
-        if (make_socket_nonblocking(to_socket(ctx)) != 0) {
+        if (make_socket_nonblocking(ctx) != 0) {
             int error = errno;
             io->v.v0.close(io, to_socket(ctx));
             io->v.v0.error = error;
@@ -179,9 +178,9 @@ lcb_socket_t lcb_io_common_ai2sock(lcb_io_opt_t io,
 
     for (; *ai; *ai = (*ai)->ai_next) {
         ret = io->v.v0.socket(io,
-                                (*ai)->ai_family,
-                                (*ai)->ai_socktype,
-                                (*ai)->ai_protocol);
+                              (*ai)->ai_family,
+                              (*ai)->ai_socktype,
+                              (*ai)->ai_protocol);
         if (ret != INVALID_SOCKET) {
             return ret;
         }
