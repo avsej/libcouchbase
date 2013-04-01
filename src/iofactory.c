@@ -77,7 +77,6 @@ static lcb_error_t get_create_func(const char *image,
                                    struct plugin_st *plugin)
 {
     void *dlhandle;
-    fprintf(stderr, "image: %s, symbol: %s\n", image, symbol);
     dlhandle = dlopen(image, RTLD_NOW | RTLD_LOCAL);
     if (dlhandle == NULL) {
         return LCB_DLOPEN_FAILED;

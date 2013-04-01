@@ -156,7 +156,7 @@ extern "C" {
                  */
                 lcb_error_t (*create)(int version,
                                       lcb_io_opt_t *io,
-                                      const void *cookie);
+                                      void *cookie);
                 /** A cookie passed directly down to the underlying io ops */
                 void *cookie;
             } v2;
