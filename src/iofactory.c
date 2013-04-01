@@ -221,7 +221,8 @@ static lcb_error_t create_v0(lcb_io_opt_t *io,
 }
 #undef PLUGIN_SO
 
-static void apply_io_defaults(lcb_io_opt_t io) {
+static void apply_io_defaults(lcb_io_opt_t io)
+{
     /* allow to reuse common functions */
     if (io->v.v0.recv == NULL) {
         io->v.v0.recv = lcb_io_common_recv;

@@ -24,46 +24,54 @@
 extern "C" {
 #endif
 
+    struct lcb_common_context_st {
 #ifdef _WIN32
-#define to_socket(s) ((SOCKET)s)
+        SOCKET sock;
 #else
-#define to_socket(s) ((int)s)
+        int sock;
 #endif
+        struct addrinfo *ai;
+        struct addrinfo *curr_ai;
+    };
+    typedef struct lcb_common_context_st lcb_common_context_t;
+
+#define to_socket(X)    ((lcb_socket_t)(intptr_t)(X))
+#define from_socket(X)  ((lcb_common_context_t *)(intptr_t)(X))
 
     LIBCOUCHBASE_API
-    lcb_ssize_t lcb_io_common_recv(struct lcb_io_opt_st *iops,
+    lcb_ssize_t lcb_io_common_recv(lcb_io_opt_t iops,
                                    lcb_socket_t sock,
                                    void *buffer,
                                    lcb_size_t len,
                                    int flags);
 
     LIBCOUCHBASE_API
-    lcb_ssize_t lcb_io_common_recvv(struct lcb_io_opt_st *iops,
+    lcb_ssize_t lcb_io_common_recvv(lcb_io_opt_t iops,
                                     lcb_socket_t sock,
                                     struct lcb_iovec_st *iov,
                                     lcb_size_t niov);
 
     LIBCOUCHBASE_API
-    lcb_ssize_t lcb_io_common_send(struct lcb_io_opt_st *iops,
+    lcb_ssize_t lcb_io_common_send(lcb_io_opt_t iops,
                                    lcb_socket_t sock,
                                    const void *msg,
                                    lcb_size_t len,
                                    int flags);
 
     LIBCOUCHBASE_API
-    lcb_ssize_t lcb_io_common_sendv(struct lcb_io_opt_st *iops,
+    lcb_ssize_t lcb_io_common_sendv(lcb_io_opt_t iops,
                                     lcb_socket_t sock,
                                     struct lcb_iovec_st *iov,
                                     lcb_size_t niov);
 
     LIBCOUCHBASE_API
-    lcb_socket_t lcb_io_common_socket(struct lcb_io_opt_st *iops,
+    lcb_socket_t lcb_io_common_socket(lcb_io_opt_t iops,
                                int domain,
                                int type,
                                int protocol);
 
     LIBCOUCHBASE_API
-    void lcb_io_common_close(struct lcb_io_opt_st *iops,
+    void lcb_io_common_close(lcb_io_opt_t iops,
                              lcb_socket_t sock);
 
     /**
@@ -74,11 +82,11 @@ extern "C" {
      * This function will 'advance' the current addrinfo structure, as well.
      */
     LIBCOUCHBASE_API
-    lcb_socket_t lcb_io_common_ai2sock(struct lcb_io_opt_st *iops,
+    lcb_socket_t lcb_io_common_ai2sock(lcb_io_opt_t iops,
                                        struct addrinfo **ai);
 
     LIBCOUCHBASE_API
-    int lcb_io_common_connect(struct lcb_io_opt_st *iops,
+    int lcb_io_common_connect(lcb_io_opt_t iops,
                               lcb_socket_t sock,
                               const struct sockaddr *name,
                               unsigned int namelen);

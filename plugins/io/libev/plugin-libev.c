@@ -101,7 +101,7 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
     evt->data = cb_data;
     evt->handler = handler;
     ev_init(&evt->ev.io, handler_thunk);
-    ev_io_set(&evt->ev.io, to_socket(sock), events);
+    ev_io_set(&evt->ev.io, from_socket(sock)->sock, events);
     ev_io_stop(io_cookie->loop, &evt->ev.io);
     ev_io_start(io_cookie->loop, &evt->ev.io);
 

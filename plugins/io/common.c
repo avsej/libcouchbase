@@ -24,25 +24,27 @@
 #include <assert.h>
 
 LIBCOUCHBASE_API
-lcb_ssize_t lcb_io_common_recv(struct lcb_io_opt_st *iops,
+lcb_ssize_t lcb_io_common_recv(lcb_io_opt_t io,
                                lcb_socket_t sock,
                                void *buffer,
                                lcb_size_t len,
                                int flags)
 {
-    lcb_ssize_t ret = recv(to_socket(sock), buffer, len, flags);
+    lcb_common_context_t *ctx = from_socket(sock);
+    lcb_ssize_t ret = recv(ctx->sock, buffer, len, flags);
     if (ret < 0) {
-        iops->v.v0.error = errno;
+        io->v.v0.error = errno;
     }
     return ret;
 }
 
 LIBCOUCHBASE_API
-lcb_ssize_t lcb_io_common_recvv(struct lcb_io_opt_st *iops,
+lcb_ssize_t lcb_io_common_recvv(lcb_io_opt_t io,
                                 lcb_socket_t sock,
                                 struct lcb_iovec_st *iov,
                                 lcb_size_t niov)
 {
+    lcb_common_context_t *ctx = from_socket(sock);
     struct msghdr msg;
     struct iovec vec[2];
     lcb_ssize_t ret;
@@ -57,35 +59,37 @@ lcb_ssize_t lcb_io_common_recvv(struct lcb_io_opt_st *iops,
     msg.msg_iov[0].iov_len = iov[0].iov_len;
     msg.msg_iov[1].iov_base = iov[1].iov_base;
     msg.msg_iov[1].iov_len = iov[1].iov_len;
-    ret = recvmsg(to_socket(sock), &msg, 0);
+    ret = recvmsg(ctx->sock, &msg, 0);
 
     if (ret < 0) {
-        iops->v.v0.error = errno;
+        io->v.v0.error = errno;
     }
 
     return ret;
 }
 
 LIBCOUCHBASE_API
-lcb_ssize_t lcb_io_common_send(struct lcb_io_opt_st *iops,
+lcb_ssize_t lcb_io_common_send(lcb_io_opt_t io,
                                lcb_socket_t sock,
                                const void *msg,
                                lcb_size_t len,
                                int flags)
 {
-    lcb_ssize_t ret = send(to_socket(sock), msg, len, flags);
+    lcb_common_context_t *ctx = from_socket(sock);
+    lcb_ssize_t ret = send(ctx->sock, msg, len, flags);
     if (ret < 0) {
-        iops->v.v0.error = errno;
+        io->v.v0.error = errno;
     }
     return ret;
 }
 
 LIBCOUCHBASE_API
-lcb_ssize_t lcb_io_common_sendv(struct lcb_io_opt_st *iops,
+lcb_ssize_t lcb_io_common_sendv(lcb_io_opt_t io,
                                 lcb_socket_t sock,
                                 struct lcb_iovec_st *iov,
                                 lcb_size_t niov)
 {
+    lcb_common_context_t *ctx = from_socket(sock);
     struct msghdr msg;
     lcb_ssize_t ret;
 
@@ -95,24 +99,26 @@ lcb_ssize_t lcb_io_common_sendv(struct lcb_io_opt_st *iops,
     assert(offsetof(struct iovec, iov_len) == offsetof(struct lcb_iovec_st, iov_len));
     msg.msg_iov = (struct iovec *)iov;
     msg.msg_iovlen = niov;
-    ret = sendmsg(to_socket(sock), &msg, 0);
+    ret = sendmsg(ctx->sock, &msg, 0);
 
     if (ret < 0) {
-        iops->v.v0.error = errno;
+        io->v.v0.error = errno;
     }
     return ret;
 }
 
 static int make_socket_nonblocking(lcb_socket_t sock)
 {
+    lcb_common_context_t *ctx = from_socket(sock);
+
 #ifdef _WIN32
     u_long nonblocking = 1;
-    if (ioctlsocket((SOCKET)sock, FIONBIO, &nonblocking) == SOCKET_ERROR) {
+    if (ioctlsocket(ctx->sock, FIONBIO, &nonblocking) == SOCKET_ERROR) {
         return -1;
     }
 #else
     int flags;
-    if ((flags = fcntl((int)sock, F_GETFL, NULL)) < 0) {
+    if ((flags = fcntl(ctx->sock, F_GETFL, NULL)) < 0) {
         return -1;
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -124,47 +130,55 @@ static int make_socket_nonblocking(lcb_socket_t sock)
 }
 
 LIBCOUCHBASE_API
-lcb_socket_t lcb_io_common_socket(struct lcb_io_opt_st *iops,
+lcb_socket_t lcb_io_common_socket(lcb_io_opt_t io,
                                   int domain,
                                   int type,
                                   int protocol)
 {
-    lcb_socket_t sock = socket(domain, type, protocol);
-    if (sock == INVALID_SOCKET) {
-        iops->v.v0.error = errno;
+    lcb_common_context_t *ctx;
+
+    ctx = calloc(1, sizeof(lcb_common_context_t));
+    ctx->sock = socket(domain, type, protocol);
+
+    if (ctx->sock == INVALID_SOCKET) {
+        io->v.v0.error = errno;
     } else {
-        if (make_socket_nonblocking(sock) != 0) {
+        if (make_socket_nonblocking(to_socket(ctx)) != 0) {
             int error = errno;
-            iops->v.v0.close(iops, sock);
-            iops->v.v0.error = error;
-            sock = INVALID_SOCKET;
+            io->v.v0.close(io, to_socket(ctx));
+            io->v.v0.error = error;
         }
     }
 
-    return sock;
+    return to_socket(ctx);
 }
 
 LIBCOUCHBASE_API
-void lcb_io_common_close(struct lcb_io_opt_st *iops,
+void lcb_io_common_close(lcb_io_opt_t io,
                          lcb_socket_t sock)
 {
+    lcb_common_context_t *ctx = from_socket(sock);
+
 #ifdef _WIN32
-    (void)closesocket((SOCKET)sock);
+    (void)closesocket(ctx->sock);
 #else
-    (void)close((int)sock);
+    (void)close(ctx->sock);
 #endif
-    (void)iops;
+    ctx->sock = INVALID_SOCKET;
+    free(ctx);
+
+    (void)io;
 }
 
 LIBCOUCHBASE_API
-lcb_socket_t lcb_io_common_ai2sock(struct lcb_io_opt_st *iops,
+lcb_socket_t lcb_io_common_ai2sock(lcb_io_opt_t io,
                                    struct addrinfo **ai)
 {
     lcb_socket_t ret = INVALID_SOCKET;
-    iops->v.v0.error = 0;
+    io->v.v0.error = 0;
 
     for (; *ai; *ai = (*ai)->ai_next) {
-        ret = iops->v.v0.socket(iops,
+        ret = io->v.v0.socket(io,
                                 (*ai)->ai_family,
                                 (*ai)->ai_socktype,
                                 (*ai)->ai_protocol);
@@ -176,14 +190,17 @@ lcb_socket_t lcb_io_common_ai2sock(struct lcb_io_opt_st *iops,
 }
 
 LIBCOUCHBASE_API
-int lcb_io_common_connect(struct lcb_io_opt_st *iops,
+int lcb_io_common_connect(lcb_io_opt_t io,
                           lcb_socket_t sock,
                           const struct sockaddr *name,
                           unsigned int namelen)
 {
-    int ret = connect(to_socket(sock), name, (socklen_t)namelen);
+    lcb_common_context_t *ctx = from_socket(sock);
+    int ret;
+
+    ret = connect(ctx->sock, name, (socklen_t)namelen);
     if (ret < 0) {
-        iops->v.v0.error = errno;
+        io->v.v0.error = errno;
     }
     return ret;
 }

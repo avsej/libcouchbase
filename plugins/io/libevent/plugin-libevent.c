@@ -114,7 +114,7 @@ static void *lcb_io_create_event(struct lcb_io_opt_st *iops)
 {
     struct event *ev;
     struct event_cookie *cookie;
-    cookie = calloc(1, sizeof (struct event_cookie));
+    cookie = calloc(1, sizeof(struct event_cookie));
     if (cookie == NULL) {
         return NULL;
     }
@@ -145,7 +145,7 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
     struct event_cookie *cookie = event_get_callback_arg(event);
     flags |= EV_PERSIST;
     if (flags == event_get_events(event) &&
-        handler == cookie->handler) {
+            handler == cookie->handler) {
         /* no change! */
         return 0;
     }

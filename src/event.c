@@ -94,7 +94,7 @@ static int parse_single(lcb_server_t c, hrtime_t stop)
     }
     pkt = lcb_packet_queue_peek(c->log);
     if (header.response.opaque < pkt->opaque &&
-        header.response.opaque > 0) { /* sasl comes with zero opaque */
+            header.response.opaque > 0) { /* sasl comes with zero opaque */
         ringbuffer_consumed(&c->input, nbytes);
         return 1; /* already processed. */
     }
@@ -319,7 +319,7 @@ int lcb_has_data_in_buffers(lcb_t instance)
     for (ii = 0; ii < instance->nservers; ++ii) {
         lcb_server_t c = instance->servers + ii;
         if (lcb_packet_queue_not_empty(c->log) || c->input.nbytes
-            || (c->http_requests && hashset_num_items(c->http_requests))) {
+                || (c->http_requests && hashset_num_items(c->http_requests))) {
             return 1;
         } else {
             assert(lcb_packet_queue_not_empty(c->output) == 0);
