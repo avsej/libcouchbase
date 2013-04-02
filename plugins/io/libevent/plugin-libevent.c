@@ -27,10 +27,6 @@
 #include "libevent_io_opts.h"
 #include "plugins/io/common.h"
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#undef NDEBUG
-#include <assert.h>
 
 struct lcb_libevent_st {
     struct event_base *base;

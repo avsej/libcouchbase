@@ -29,10 +29,6 @@
 #include "libev_io_opts.h"
 #include "plugins/io/common.h"
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#undef NDEBUG
-#include <assert.h>
 
 struct libev_cookie {
     struct ev_loop *loop;
