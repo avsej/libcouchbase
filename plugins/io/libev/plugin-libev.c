@@ -43,6 +43,7 @@ struct libev_event {
     } ev;
     void *data;
     void (*handler)(lcb_socket_t sock, short which, void *cb_data);
+    lcb_socket_t sock;  /* lcb_common_context_t* */
 };
 
 static void handler_thunk(struct ev_loop *loop, ev_io *io, int events)
@@ -56,7 +57,7 @@ static void handler_thunk(struct ev_loop *loop, ev_io *io, int events)
     if (events & EV_WRITE) {
         which |= LCB_WRITE_EVENT;
     }
-    evt->handler(io->fd, which, evt->data);
+    evt->handler(evt->sock, which, evt->data);
 
     (void)loop;
 }
@@ -94,6 +95,7 @@ static int lcb_io_update_event(struct lcb_io_opt_st *iops,
     }
 
     ev_io_stop(io_cookie->loop, &evt->ev.io);
+    evt->sock = sock;
     evt->data = cb_data;
     evt->handler = handler;
     ev_init(&evt->ev.io, handler_thunk);
@@ -141,6 +143,7 @@ static int lcb_io_update_timer(struct lcb_io_opt_st *iops,
         /* no change! */
         return 0;
     }
+    evt->sock = to_socket(INVALID_SOCKET);
     evt->data = cb_data;
     evt->handler = handler;
     ev_init(&evt->ev.io, handler_thunk);
