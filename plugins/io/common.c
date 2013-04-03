@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #undef NDEBUG
 #include <assert.h>
+#include "internal.h"
 
 LIBCOUCHBASE_API
 lcb_ssize_t lcb_io_common_recv(lcb_io_opt_t io,
@@ -127,23 +128,64 @@ static int make_socket_nonblocking(lcb_common_context_t *ctx)
     return 0;
 }
 
+/* XXX it should use instance-level setting somehow */
+static int common_getaddrinfo(const char *hostname,
+                                     const char *servname,
+                                     struct addrinfo **res)
+{
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_INET;
+    return getaddrinfo(hostname, servname, &hints, res);
+}
+
+
 LIBCOUCHBASE_API
 lcb_socket_t lcb_io_common_socket(lcb_io_opt_t io,
-                                  int domain,
-                                  int type,
-                                  int protocol)
+                                  const char *hostname,
+                                  const char *servname)
 {
     lcb_common_context_t *ctx;
+    int error;
 
     ctx = calloc(1, sizeof(lcb_common_context_t));
-    ctx->sock = socket(domain, type, protocol);
+    if (ctx == NULL) {
+        return to_socket(INVALID_SOCKET);
+    }
+    error = common_getaddrinfo(hostname, servname, &ctx->root_ai);
+    if (error != 0) {
+        /* FIXME */
+/*            char errinfo[1024];*/
+/*            lcb_error_t our_errno;*/
+/*            lcb_sockconn_errinfo(instance->io->v.v0.error,*/
+/*                                 instance->host,*/
+/*                                 instance->port,*/
+/*                                 instance->ai,*/
+/*                                 errinfo,*/
+/*                                 sizeof(errinfo),*/
+/*                                 &our_errno);*/
+/*            lcb_instance_connerr(instance, our_errno, errinfo);*/
+/*            return ;*/
 
+        return to_socket(INVALID_SOCKET);
+    }
+    ctx->curr_ai = ctx->root_ai;
+    for (; ctx->curr_ai; ctx->curr_ai = ctx->curr_ai->ai_next) {
+        ctx->sock = socket(ctx->curr_ai->ai_family,
+                           ctx->curr_ai->ai_socktype,
+                           ctx->curr_ai->ai_protocol);
+        if (ctx->sock != INVALID_SOCKET) {
+            break;
+        }
+    }
     if (ctx->sock == INVALID_SOCKET) {
         free(ctx);
         io->v.v0.error = errno;
     } else {
         if (make_socket_nonblocking(ctx) != 0) {
-            int error = errno;
+            error = errno;
             io->v.v0.close(io, to_socket(ctx));
             io->v.v0.error = error;
         }
@@ -164,28 +206,12 @@ void lcb_io_common_close(lcb_io_opt_t io,
     (void)close(ctx->sock);
 #endif
     ctx->sock = INVALID_SOCKET;
+    if (ctx->root_ai != NULL) {
+        freeaddrinfo(ctx->root_ai);
+    }
     free(ctx);
 
     (void)io;
-}
-
-LIBCOUCHBASE_API
-lcb_socket_t lcb_io_common_ai2sock(lcb_io_opt_t io,
-                                   struct addrinfo **ai)
-{
-    lcb_socket_t ret = INVALID_SOCKET;
-    io->v.v0.error = 0;
-
-    for (; *ai; *ai = (*ai)->ai_next) {
-        ret = io->v.v0.socket(io,
-                              (*ai)->ai_family,
-                              (*ai)->ai_socktype,
-                              (*ai)->ai_protocol);
-        if (ret != INVALID_SOCKET) {
-            return ret;
-        }
-    }
-    return ret;
 }
 
 LIBCOUCHBASE_API
@@ -202,4 +228,96 @@ int lcb_io_common_connect(lcb_io_opt_t io,
         io->v.v0.error = errno;
     }
     return ret;
+}
+
+struct connect_cookie_st
+{
+    lcb_io_opt_t io;
+    void *event;
+    void *cb_data;
+    lcb_io_plugin_connect_cb handler;
+};
+typedef struct connect_cookie_st connect_cookie_t;
+
+static
+void lcb_io_common_connect_thunk(lcb_socket_t sock, short which, void *arg)
+{
+    connect_cookie_t *cookie = arg;
+    lcb_io_opt_t io = cookie->io;
+    void *event = cookie->event;
+    void *cb_data = cookie->cb_data;
+    lcb_io_plugin_connect_cb handler = cookie->handler;
+
+    free(cookie);
+    lcb_io_common_connect_peer(io, sock, event, cb_data, handler);
+    (void)which;
+}
+
+LIBCOUCHBASE_API
+void lcb_io_common_connect_peer(lcb_io_opt_t io,
+                                lcb_socket_t sock,
+                                void *event,
+                                void *cb_data,
+                                lcb_io_plugin_connect_cb handler)
+{
+    lcb_common_context_t *ctx = from_socket(sock);
+    int retry;
+
+    do {
+        if (ctx->sock == INVALID_SOCKET) {
+            /* reset address info for future attempts */
+            ctx->curr_ai = ctx->root_ai;
+            handler(LCB_CONNECT_ERROR, cb_data);
+            return;
+        }
+
+        retry = 0;
+        if (io->v.v0.connect(io, sock, ctx->curr_ai->ai_addr,
+                             (unsigned int)ctx->curr_ai->ai_addrlen) == 0) {
+            handler(LCB_SUCCESS, cb_data);
+            return ;
+        } else {
+            lcb_connect_status_t connstatus = lcb_connect_status(io->v.v0.error);
+            connect_cookie_t *cookie;
+
+            switch (connstatus) {
+            case LCB_CONNECT_EINTR:
+                retry = 1;
+                break;
+            case LCB_CONNECT_EISCONN:
+                handler(LCB_SUCCESS, cb_data);
+                return;
+            case LCB_CONNECT_EINPROGRESS: /* first call to connect */
+                cookie = malloc(sizeof(connect_cookie_t));
+                cookie->io = io;
+                cookie->event = event;
+                cookie->cb_data = cb_data;
+                cookie->handler = handler;
+                io->v.v0.update_event(io, sock, event,
+                                      LCB_WRITE_EVENT, cookie,
+                                      lcb_io_common_connect_thunk);
+                return ;
+            case LCB_CONNECT_EALREADY: /* subsequent calls to connect */
+                return ;
+
+            case LCB_CONNECT_EFAIL:
+                if (ctx->curr_ai->ai_next) {
+                    retry = 1;
+                    ctx->curr_ai = ctx->curr_ai->ai_next;
+                    io->v.v0.delete_event(io, sock, event);
+                    io->v.v0.close(io, sock);
+                    break;
+                } /* else, we fallthrough */
+
+            default:
+                /* reset address info for future attempts */
+                ctx->curr_ai = ctx->root_ai;
+                handler(LCB_CONNECT_ERROR, cb_data);
+                return;
+            }
+        }
+    } while (retry);
+
+    /* not reached */
+    return ;
 }

@@ -147,13 +147,13 @@ extern "C" {
                  * Create a non-blocking socket.
                  */
                 lcb_socket_t (*socket)(struct lcb_io_opt_st *iops,
-                                       int domain,
-                                       int type,
-                                       int protocol);
+                                       const char *hostname,
+                                       const char *servname);
                 int (*connect)(struct lcb_io_opt_st *iops,
                                lcb_socket_t sock,
                                const struct sockaddr *name,
                                unsigned int namelen);
+
                 lcb_ssize_t (*recv)(struct lcb_io_opt_st *iops,
                                     lcb_socket_t sock,
                                     void *buffer,
@@ -204,9 +204,12 @@ extern "C" {
                 void (*run_event_loop)(struct lcb_io_opt_st *iops);
 
                 /* FIXME v1 */
-                lcb_socket_t (*ai2sock)(struct lcb_io_opt_st *iops,
-                                        struct addrinfo **ai);
-
+                void (*connect_peer)(struct lcb_io_opt_st *iops,
+                                     lcb_socket_t sock,
+                                     void *event,
+                                     void *cb_data,
+                                     void (*handler)(lcb_error_t status,
+                                                     void *cb_data));
             } v0;
         } v;
     };

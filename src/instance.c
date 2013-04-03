@@ -989,160 +989,43 @@ static void vbucket_stream_handler(lcb_socket_t sock, short which, void *arg)
     lcb_error_handler(instance, LCB_SUCCESS, NULL);
 }
 
-static void lcb_instance_connected(lcb_t instance)
-{
-    instance->backup_idx = 0;
-    instance->io->v.v0.update_event(instance->io, instance->sock,
-                                    instance->event, LCB_RW_EVENT,
-                                    instance, vbucket_stream_handler);
-}
-
-static void lcb_instance_connect_handler(lcb_socket_t sock,
-                                         short which,
-                                         void *arg)
+static void instance_connected(lcb_error_t status, void *arg)
 {
     lcb_t instance = arg;
-    int retry;
-    lcb_connect_status_t connstatus = LCB_CONNECT_OK;
 
-    do {
-        if (instance->sock == INVALID_SOCKET) {
-            /* Try to get a socket.. */
-            instance->sock = instance->io->v.v0.ai2sock(instance->io, &instance->curr_ai);
-            /* Reset the stream state, we run this only during a new socket. */
-            lcb_instance_reset_stream_state(instance);
-        }
-
-        if (instance->curr_ai == NULL) {
-            char errinfo[1024];
-            lcb_error_t our_errno;
-            lcb_sockconn_errinfo(instance->io->v.v0.error,
-                                 instance->host,
-                                 instance->port,
-                                 instance->ai,
-                                 errinfo,
-                                 sizeof(errinfo),
-                                 &our_errno);
-            lcb_instance_connerr(instance, our_errno, errinfo);
-            return ;
-        }
-
-        retry = 0;
-        if (instance->io->v.v0.connect(instance->io,
-                                       instance->sock,
-                                       instance->curr_ai->ai_addr,
-                                       (unsigned int)instance->curr_ai->ai_addrlen) == 0) {
-            lcb_instance_connected(instance);
-            return ;
-        } else {
-            connstatus = lcb_connect_status(instance->io->v.v0.error);
-            switch (connstatus) {
-            case LCB_CONNECT_EINTR:
-                retry = 1;
-                break;
-            case LCB_CONNECT_EISCONN:
-                lcb_instance_connected(instance);
-                return ;
-            case LCB_CONNECT_EINPROGRESS:
-                instance->io->v.v0.update_event(instance->io,
-                                                instance->sock,
-                                                instance->event,
-                                                LCB_WRITE_EVENT,
-                                                instance,
-                                                lcb_instance_connect_handler);
-                return ;
-            case LCB_CONNECT_EALREADY: /* Subsequent calls to connect */
-                return ;
-
-            default: {
-                release_socket(instance);
-                if (connstatus == LCB_CONNECT_EFAIL &&
-                        instance->curr_ai->ai_next) {
-                    /* Here we handle 'medium-type' errors which are not a hard
-                     * failure, but mean that we need to retry the connect() with
-                     * different parameters.
-                     */
-                    retry = 1;
-                    instance->curr_ai = instance->curr_ai->ai_next;
-                    break;
-                } else {
-                    char errinfo[1024];
-                    snprintf(errinfo, sizeof(errinfo), "Connection failed: %s",
-                             strerror(instance->io->v.v0.error));
-                    lcb_instance_connerr(instance, LCB_CONNECT_ERROR, errinfo);
-                    return ;
-                }
-            }
-
-            }
-        }
-    } while (retry);
-    (void)sock;
-    (void)which;
-}
-
-
-int lcb_getaddrinfo(lcb_t instance, const char *hostname,
-                    const char *servname, struct addrinfo **res)
-{
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_flags = AI_PASSIVE;
-    hints.ai_socktype = SOCK_STREAM;
-    switch (instance->ipv6) {
-    case LCB_IPV6_DISABLED:
-        hints.ai_family = AF_INET;
-        break;
-    case LCB_IPV6_ONLY:
-        hints.ai_family = AF_INET6;
-        break;
-    default:
-        hints.ai_family = AF_UNSPEC;
+    if (status == LCB_SUCCESS) {
+        instance->backup_idx = 0;
+        instance->io->v.v0.update_event(instance->io, instance->sock,
+                                        instance->event, LCB_RW_EVENT,
+                                        instance, vbucket_stream_handler);
+    } else {
+        lcb_instance_connerr(instance, LCB_CONNECT_ERROR,
+                             "cannot connect");
     }
-
-    return getaddrinfo(hostname, servname, &hints, res);
 }
-
 
 /**
  * @todo use async connects etc
  */
 static lcb_error_t try_to_connect(lcb_t instance)
 {
-    int error;
-
     release_socket(instance);
-    if (instance->ai != NULL) {
-        freeaddrinfo(instance->ai);
-        instance->ai = NULL;
-    }
-
-    do {
-        setup_current_host(instance,
-                           instance->backup_nodes[instance->backup_idx++]);
-        error = lcb_getaddrinfo(instance, instance->host, instance->port,
-                                &instance->ai);
-        if (error != 0) {
-            /* Ok, we failed to look up that server.. look up the next
-             * in the list
-             */
-            if (instance->backup_nodes[instance->backup_idx] == NULL) {
-                char errinfo[1024];
-                snprintf(errinfo, sizeof(errinfo),
-                         "Failed to look up \"%s:%s\"",
-                         instance->host, instance->port);
-                return lcb_error_handler(instance,
-                                         LCB_UNKNOWN_HOST,
-                                         errinfo);
-            }
-        }
-    } while (error != 0);
-
-    instance->curr_ai = instance->ai;
+    setup_current_host(instance, instance->backup_nodes[instance->backup_idx++]);
     instance->event = instance->io->v.v0.create_event(instance->io);
     instance->last_error = LCB_SUCCESS;
-    lcb_instance_connect_handler(INVALID_SOCKET, 0, instance);
-
+    if (instance->sock == INVALID_SOCKET) {
+        /* Try to get a socket.. */
+        instance->sock = instance->io->v.v0.socket(instance->io,
+                                                   instance->host,
+                                                   instance->port);
+        lcb_instance_reset_stream_state(instance);
+    }
+    if (instance->sock == INVALID_SOCKET) {
+        return LCB_CONNECT_ERROR;
+    }
+    instance->io->v.v0.connect_peer(instance->io, instance->sock,
+                                    instance->event, instance,
+                                    instance_connected);
     if (instance->syncmode == LCB_SYNCHRONOUS) {
         lcb_wait(instance);
     }

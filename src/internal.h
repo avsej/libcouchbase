@@ -282,10 +282,6 @@ extern "C" {
         char *rest_api_server;
         /** The socket to the server */
         lcb_socket_t sock;
-        /** The address information for this server (the one to release) */
-        struct addrinfo *root_ai;
-        /** The address information for this server (the one we're trying) */
-        struct addrinfo *curr_ai;
 
         struct lcb_iovec_st *iov;
         lcb_size_t niov;
@@ -357,10 +353,6 @@ extern "C" {
         /** The HTTP response parser */
         http_parser *parser;
         http_parser_settings parser_settings;
-        /** The address information for this server (the one to release) */
-        struct addrinfo *root_ai;
-        /** The address information for this server (the one we're trying) */
-        struct addrinfo *curr_ai;
         /** The event item representing _this_ object */
         void *event;
         /** Non-zero if caller would like to receive response in chunks */
@@ -469,10 +461,6 @@ extern "C" {
     lcb_error_t lcb_apply_vbucket_config(lcb_t instance,
                                          VBUCKET_CONFIG_HANDLE config);
 
-
-
-    int lcb_getaddrinfo(lcb_t instance, const char *hostname,
-                        const char *servname, struct addrinfo **res);
 
     /*    void lcb_failout_observe_request(lcb_server_t server,*/
     /*                                     struct lcb_command_data_st *command_data,*/

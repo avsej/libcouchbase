@@ -270,8 +270,6 @@ lcb_error_t lcb_failout_server(lcb_server_t server,
         server->instance->io->v.v0.close(server->instance->io, server->sock);
         server->sock = INVALID_SOCKET;
     }
-    /* reset address info for future attempts */
-    server->curr_ai = server->root_ai;
 
     return error;
 }
@@ -332,10 +330,6 @@ void lcb_server_destroy(lcb_server_t server)
 
     if (server->sock != INVALID_SOCKET) {
         server->instance->io->v.v0.close(server->instance->io, server->sock);
-    }
-
-    if (server->root_ai != NULL) {
-        freeaddrinfo(server->root_ai);
     }
 
     free(server->rest_api_server);
@@ -535,84 +529,10 @@ static void socket_connected(lcb_server_t server)
     }
 }
 
-static void server_connect(lcb_server_t server);
-
-
-static void server_connect_handler(lcb_socket_t sock, short which, void *arg)
-{
-    lcb_server_t server = arg;
-    (void)sock;
-    (void)which;
-
-    server_connect(server);
-}
-
-static void server_connect(lcb_server_t server)
-{
-    int retry;
-    lcb_io_opt_t io = server->instance->io;
-
-    do {
-        if (server->sock == INVALID_SOCKET) {
-            /* Try to get a socket.. */
-            server->sock = io->v.v0.ai2sock(io, &server->curr_ai);
-        }
-        if (server->curr_ai == NULL) {
-            /*TODO: Maybe check io->v.v0.error now? */
-
-            /* this means we're not going to retry!! add an error here! */
-            lcb_failout_server(server, LCB_CONNECT_ERROR);
-            return ;
-        }
-
-        retry = 0;
-        if (io->v.v0.connect(io, server->sock, server->curr_ai->ai_addr,
-                             (unsigned int)server->curr_ai->ai_addrlen) == 0) {
-            /* connected */
-            socket_connected(server);
-            return ;
-        } else {
-            lcb_connect_status_t connstatus = lcb_connect_status(io->v.v0.error);
-            switch (connstatus) {
-            case LCB_CONNECT_EINTR:
-                retry = 1;
-                break;
-            case LCB_CONNECT_EISCONN:
-                socket_connected(server);
-                return ;
-            case LCB_CONNECT_EINPROGRESS: /*first call to connect*/
-                io->v.v0.update_event(io, server->sock, server->event,
-                                      LCB_WRITE_EVENT, server,
-                                      server_connect_handler);
-                return ;
-            case LCB_CONNECT_EALREADY: /* Subsequent calls to connect */
-                return ;
-
-            case LCB_CONNECT_EFAIL:
-                if (server->curr_ai->ai_next) {
-                    retry = 1;
-                    server->curr_ai = server->curr_ai->ai_next;
-                    io->v.v0.delete_event(io, server->sock, server->event);
-                    io->v.v0.close(io, server->sock);
-                    server->sock = INVALID_SOCKET;
-                    break;
-                } /* Else, we fallthrough */
-
-            default:
-                lcb_failout_server(server, LCB_CONNECT_ERROR);
-                return;
-            }
-        }
-    } while (retry);
-    /* not reached */
-    return ;
-}
-
 lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
 {
     /* Initialize all members */
     char *p;
-    int error;
     lcb_error_t rc;
     const char *n = vbucket_config_get_server(server->instance->vbucket_config,
                                               servernum);
@@ -683,13 +603,6 @@ lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
     }
-    error = lcb_getaddrinfo(server->instance, server->hostname, server->port,
-                            &server->root_ai);
-    if (error != 0) {
-        lcb_server_destroy(server);
-        return LCB_NETWORK_ERROR;
-    }
-    server->curr_ai = server->root_ai;
     server->sock = INVALID_SOCKET;
     server->sasl_conn = NULL;
     return LCB_SUCCESS;
@@ -729,18 +642,42 @@ lcb_error_t lcb_server_iov_consume(lcb_server_t server, lcb_size_t nbytes)
     return LCB_SUCCESS;
 }
 
+static void lcb_server_connect_handler(lcb_error_t status, void *arg)
+{
+    lcb_server_t server = arg;
+    lcb_io_opt_t io = server->instance->io;
+
+    io->v.v0.update_event(io, server->sock, server->event,
+                          LCB_RW_EVENT, server,
+                          lcb_server_event_handler);
+
+    if (status == LCB_SUCCESS) {
+        socket_connected(server);
+    } else {
+        lcb_failout_server(server, LCB_CONNECT_ERROR);
+    }
+}
+
 void lcb_server_send_packets(lcb_server_t server)
 {
+    lcb_io_opt_t io = server->instance->io;
+
     if (lcb_packet_queue_not_empty(server->pending) || lcb_packet_queue_not_empty(server->output)) {
         if (server->connected) {
-            server->instance->io->v.v0.update_event(server->instance->io,
-                                                    server->sock,
-                                                    server->event,
-                                                    LCB_RW_EVENT,
-                                                    server,
-                                                    lcb_server_event_handler);
+            io->v.v0.update_event(io, server->sock, server->event,
+                                  LCB_RW_EVENT, server,
+                                  lcb_server_event_handler);
         } else {
-            server_connect(server);
+            if (server->sock == INVALID_SOCKET) {
+                /* Try to get a socket.. */
+                server->sock = io->v.v0.socket(io, server->hostname, server->port);
+            }
+            if (server->sock == INVALID_SOCKET) {
+                lcb_failout_server(server, LCB_NETWORK_ERROR);
+                return;
+            }
+            io->v.v0.connect_peer(io, server->sock, server->event,
+                                  server, lcb_server_connect_handler);
         }
     }
 }

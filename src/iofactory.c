@@ -242,11 +242,11 @@ static void apply_io_defaults(lcb_io_opt_t io)
     if (io->v.v0.close == NULL) {
         io->v.v0.close = lcb_io_common_close;
     }
-    if (io->v.v0.ai2sock == NULL) {
-        io->v.v0.ai2sock = lcb_io_common_ai2sock;
-    }
     if (io->v.v0.connect == NULL) {
         io->v.v0.connect = lcb_io_common_connect;
+    }
+    if (io->v.v0.connect_peer == NULL) {
+        io->v.v0.connect_peer = lcb_io_common_connect_peer;
     }
 }
 

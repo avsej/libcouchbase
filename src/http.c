@@ -43,9 +43,6 @@ static void http_request_destroy(lcb_http_request_t req)
             req->io->v.v0.close(req->io, req->sock);
         }
     }
-    if (req->root_ai) {
-        freeaddrinfo(req->root_ai);
-    }
     free(req->path);
     free(req->url);
     free(req->host);
@@ -426,87 +423,18 @@ static void request_event_handler(lcb_socket_t sock, short which, void *arg)
     (void)sock;
 }
 
-static lcb_error_t request_connect(lcb_http_request_t req);
-
-static void request_connect_handler(lcb_socket_t sock, short which, void *arg)
+static void request_connected(lcb_error_t status, void *arg)
 {
-    lcb_http_request_t req = (lcb_http_request_t) arg;
-    lcb_error_t err = request_connect((lcb_http_request_t)arg);
+    lcb_http_request_t req = arg;
 
-    if (err != LCB_SUCCESS) {
-        lcb_http_request_finish(req->instance,
-                                req->server,
-                                req,
-                                err);
+    if (status != LCB_SUCCESS) {
+        lcb_http_request_finish(req->instance, req->server, req,
+                                status);
+    } else {
+        req->io->v.v0.update_event(req->io, req->sock,
+                                   req->event, LCB_WRITE_EVENT,
+                                   req, request_event_handler);
     }
-
-    (void)sock;
-    (void)which;
-}
-
-
-static void request_connected(lcb_http_request_t req)
-{
-    req->io->v.v0.update_event(req->io, req->sock,
-                               req->event, LCB_WRITE_EVENT,
-                               req, request_event_handler);
-}
-
-static lcb_error_t request_connect(lcb_http_request_t req)
-{
-    int retry;
-
-    do {
-        if (req->sock == INVALID_SOCKET) {
-            /* Try to get a socket.. */
-            req->sock = req->io->v.v0.ai2sock(req->io, &req->curr_ai);
-        }
-        if (req->curr_ai == NULL) {
-            return LCB_CONNECT_ERROR;
-        }
-
-        retry = 0;
-        if (req->io->v.v0.connect(req->io, req->sock, req->curr_ai->ai_addr,
-                                  (unsigned int)req->curr_ai->ai_addrlen) == 0) {
-            /* connected */
-            request_connected(req);
-            return LCB_SUCCESS;
-        } else {
-            switch (lcb_connect_status(req->io->v.v0.error)) {
-            case LCB_CONNECT_EINTR:
-                retry = 1;
-                break;
-            case LCB_CONNECT_EISCONN:
-                request_connected(req);
-                return LCB_SUCCESS;
-            case LCB_CONNECT_EINPROGRESS: /*first call to connect*/
-                req->io->v.v0.update_event(req->io,
-                                           req->sock,
-                                           req->event,
-                                           LCB_WRITE_EVENT,
-                                           req,
-                                           request_connect_handler);
-                return LCB_SUCCESS;
-            case LCB_CONNECT_EALREADY: /* Subsequent calls to connect */
-                return LCB_SUCCESS;
-
-            case LCB_CONNECT_EFAIL:
-                if (req->curr_ai->ai_next) {
-                    retry = 1;
-                    req->curr_ai = req->curr_ai->ai_next;
-                    req->io->v.v0.delete_event(req->io, req->sock, req->event);
-                    req->io->v.v0.close(req->io, req->sock);
-                    req->sock = INVALID_SOCKET;
-                    break;
-                } /* Else, we fallthrough */
-
-            default:
-                return LCB_CONNECT_ERROR;
-            }
-        }
-    } while (retry);
-
-    return LCB_SUCCESS;
 }
 
 static lcb_server_t get_view_node(lcb_t instance)
@@ -867,20 +795,20 @@ lcb_error_t lcb_make_http_request(lcb_t instance,
         hashset_add(instance->http_requests, req);
     }
 
-    {
-        /* Get server socket address */
-        int err;
-        req->event = req->io->v.v0.create_event(req->io);
-        err = lcb_getaddrinfo(instance, req->host, req->port, &req->root_ai);
-        req->curr_ai = req->root_ai;
-        if (err != 0) {
-            req->curr_ai = req->root_ai = NULL;
-        }
-        req->sock = INVALID_SOCKET;
-    }
+    req->event = req->io->v.v0.create_event(req->io);
+    req->sock = INVALID_SOCKET;
 
     TRACE_HTTP_BEGIN(req);
-    return lcb_synchandler_return(instance, request_connect(req));
+    if (req->sock == INVALID_SOCKET) {
+        /* Try to get a socket.. */
+        req->sock = req->io->v.v0.socket(req->io, req->host, req->port);
+    }
+    if (req->sock == INVALID_SOCKET) {
+        lcb_synchandler_return(instance, LCB_CONNECT_ERROR);
+    }
+    req->io->v.v0.connect_peer(req->io, req->sock, req->event,
+                               req, request_connected);
+    return lcb_synchandler_return(instance, LCB_SUCCESS);
 }
 
 LIBCOUCHBASE_API
