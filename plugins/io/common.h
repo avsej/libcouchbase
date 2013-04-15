@@ -23,9 +23,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    typedef void (*lcb_io_plugin_event_cb)(lcb_socket_t sock, short which, void *data);
-    typedef void (*lcb_io_plugin_connect_cb)(lcb_error_t status, void *data);
-
     struct lcb_common_context_st {
 #ifdef _WIN32
         SOCKET sock;

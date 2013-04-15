@@ -133,6 +133,9 @@ extern "C" {
         lcb_size_t iov_len;
     };
 
+    typedef void (*lcb_io_plugin_event_cb)(lcb_socket_t sock, short which, void *data);
+    typedef void (*lcb_io_plugin_connect_cb)(lcb_error_t status, void *data);
+
     struct lcb_io_opt_st {
         int version;
         void *dlhandle;
@@ -183,9 +186,7 @@ extern "C" {
                                     void *timer,
                                     lcb_uint32_t usec,
                                     void *cb_data,
-                                    void (*handler)(lcb_socket_t sock,
-                                                    short which,
-                                                    void *cb_data));
+                                    lcb_io_plugin_event_cb handler);
                 void *(*create_event)(struct lcb_io_opt_st *iops);
                 void (*destroy_event)(struct lcb_io_opt_st *iops,
                                       void *event);
@@ -194,9 +195,7 @@ extern "C" {
                                     void *event,
                                     short flags,
                                     void *cb_data,
-                                    void (*handler)(lcb_socket_t sock,
-                                                    short which,
-                                                    void *cb_data));
+                                    lcb_io_plugin_event_cb handler);
                 void (*delete_event)(struct lcb_io_opt_st *iops,
                                      lcb_socket_t sock,
                                      void *event);
@@ -208,8 +207,7 @@ extern "C" {
                                      lcb_socket_t sock,
                                      void *event,
                                      void *cb_data,
-                                     void (*handler)(lcb_error_t status,
-                                                     void *cb_data));
+                                     lcb_io_plugin_connect_cb handler);
             } v0;
         } v;
     };
