@@ -130,8 +130,8 @@ static int make_socket_nonblocking(lcb_common_context_t *ctx)
 
 /* XXX it should use instance-level setting somehow */
 static int common_getaddrinfo(const char *hostname,
-                                     const char *servname,
-                                     struct addrinfo **res)
+                              const char *servname,
+                              struct addrinfo **res)
 {
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
