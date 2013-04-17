@@ -72,6 +72,8 @@ endif
 
 if BUILD_PLUGINS
 pkginclude_HEADERS += \
+                     plugins/io/common.c \
+                     plugins/io/common.h \
                      plugins/io/libev/libev_io_opts.h \
                      plugins/io/libevent/libevent_io_opts.h \
                      plugins/io/win32/winsock_io_opts.h
