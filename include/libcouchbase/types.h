@@ -203,6 +203,7 @@ extern "C" {
                 void (*run_event_loop)(struct lcb_io_opt_st *iops);
 
                 /* FIXME v1 */
+                lcb_uint32_t iov_max;
                 void (*connect_peer)(struct lcb_io_opt_st *iops,
                                      lcb_socket_t sock,
                                      void *event,

@@ -534,8 +534,10 @@ lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
     /* Initialize all members */
     char *p;
     lcb_error_t rc;
-    const char *n = vbucket_config_get_server(server->instance->vbucket_config,
-                                              servernum);
+    lcb_t instance = server->instance;
+    lcb_io_opt_t io = instance->io;
+    const char *n = vbucket_config_get_server(instance->vbucket_config, servernum);
+
     server->index = servernum;
     server->authority = strdup(n);
     server->hostname = strdup(n);
@@ -547,10 +549,9 @@ lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
     *p = '\0';
     server->port = p + 1;
 
-    server->is_config_node = vbucket_config_is_config_node(server->instance->vbucket_config,
+    server->is_config_node = vbucket_config_is_config_node(instance->vbucket_config,
                                                            servernum);
-    n = vbucket_config_get_couch_api_base(server->instance->vbucket_config,
-                                          servernum);
+    n = vbucket_config_get_couch_api_base(instance->vbucket_config, servernum);
     if (n != NULL) {
         server->couch_api_base = strdup(n);
         if (server->couch_api_base == NULL) {
@@ -563,19 +564,18 @@ lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
     }
-    n = vbucket_config_get_rest_api_server(server->instance->vbucket_config,
-                                           servernum);
+    n = vbucket_config_get_rest_api_server(instance->vbucket_config, servernum);
     server->rest_api_server = strdup(n);
     if (server->rest_api_server == NULL) {
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
     }
-    server->event = server->instance->io->v.v0.create_event(server->instance->io);
+    server->event = io->v.v0.create_event(io);
     if (server->event == NULL) {
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
     }
-    server->timer = server->instance->io->v.v0.create_timer(server->instance->io);
+    server->timer = io->v.v0.create_timer(io);
     if (server->timer == NULL) {
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
@@ -597,8 +597,7 @@ lcb_error_t lcb_server_initialize(lcb_server_t server, int servernum)
     }
 
     server->niov = 0;
-    /* FIXME move IOV_MAX to the plugin */
-    server->iov = calloc(IOV_MAX, sizeof(struct lcb_iovec_st));
+    server->iov = calloc(io->v.v0.iov_max, sizeof(struct lcb_iovec_st));
     if (server->iov == NULL) {
         lcb_server_destroy(server);
         return LCB_CLIENT_ENOMEM;
@@ -612,9 +611,10 @@ lcb_error_t lcb_server_iov_fill(lcb_server_t server)
 {
     lcb_packet_t root = server->output;
     lcb_packet_t pkt = root->next;
+    lcb_uint32_t iov_max = server->instance->io->v.v0.iov_max;
 
     server->niov = 0;
-    while (pkt != root && server->niov < IOV_MAX) {
+    while (pkt != root && server->niov < iov_max) {
         struct lcb_iovec_st *io = server->iov + server->niov;
         io->iov_base = pkt->payload->bytes + pkt->payload->nread;
         io->iov_len = pkt->payload->nbytes - pkt->payload->nread;

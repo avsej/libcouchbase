@@ -248,6 +248,9 @@ static void apply_io_defaults(lcb_io_opt_t io)
     if (io->v.v0.connect_peer == NULL) {
         io->v.v0.connect_peer = lcb_io_common_connect_peer;
     }
+    if (io->v.v0.iov_max == 0) {
+        io->v.v0.iov_max = IOV_MAX;
+    }
 }
 
 static lcb_error_t create_v1(lcb_io_opt_t *io,
