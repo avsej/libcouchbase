@@ -26,6 +26,8 @@
 #include <dlfcn.h>
 #endif
 
+#define LCB_LAST_HTTP_HEADER "X-Libcouchbase: \r\n"
+
 /* private function to safely free backup_nodes*/
 static void free_backup_nodes(lcb_t instance);
 static lcb_error_t try_to_connect(lcb_t instance);
@@ -296,12 +298,17 @@ lcb_error_t lcb_create(lcb_t *instance,
         offset += snprintf(buffer + offset, sizeof(buffer) - (lcb_size_t)offset,
                            "Authorization: Basic %s\r\n", base64);
     }
-    offset += snprintf(buffer + offset, sizeof(buffer) - (lcb_size_t)offset, "\r\n");
-    obj->http_uri = strdup(buffer);
+
+    offset += snprintf(buffer + offset, sizeof(buffer) - (lcb_size_t)offset,
+                       "%s", LCB_LAST_HTTP_HEADER);
+
+    obj->http_uri = malloc(strlen(buffer) + strlen(host) + 10);
     if (obj->http_uri == NULL) {
         lcb_destroy(obj);
         return LCB_CLIENT_ENOMEM;
     }
+    strcpy(obj->http_uri, buffer);
+
     return LCB_SUCCESS;
 }
 
@@ -1009,6 +1016,8 @@ static void instance_connected(lcb_error_t status, void *arg)
  */
 static lcb_error_t try_to_connect(lcb_t instance)
 {
+    char *ptr;
+
     release_socket(instance);
     setup_current_host(instance, instance->backup_nodes[instance->backup_idx++]);
     instance->event = instance->io->v.v0.create_event(instance->io);
@@ -1023,6 +1032,11 @@ static lcb_error_t try_to_connect(lcb_t instance)
     if (instance->sock == INVALID_SOCKET) {
         return LCB_CONNECT_ERROR;
     }
+    /* We need to fix the host part... */
+    ptr = strstr(instance->http_uri, LCB_LAST_HTTP_HEADER);
+    assert(ptr);
+    ptr += strlen(LCB_LAST_HTTP_HEADER);
+    sprintf(ptr, "Host: %s:%s\r\n\r\n", instance->host, instance->port);
     instance->io->v.v0.connect_peer(instance->io, instance->sock,
                                     instance->event, instance,
                                     instance_connected);
