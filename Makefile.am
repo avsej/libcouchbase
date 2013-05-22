@@ -125,6 +125,7 @@ libcouchbase_la_SOURCES = \
                         src/arithmetic.c \
                         src/base64.c \
                         src/behavior.c \
+                        src/bucketconfig/io.c \
                         src/compat.c \
                         src/config_static.h \
                         src/config_cache.c \
@@ -140,7 +141,9 @@ libcouchbase_la_SOURCES = \
                         src/hashset.h \
                         src/http.c \
                         src/instance.c \
+                        src/io/connect.c \
                         src/internal.h \
+                        src/io/lcbio.h \
                         src/observe.c \
                         src/packet.c \
                         src/remove.c \
@@ -148,6 +151,7 @@ libcouchbase_la_SOURCES = \
                         src/ringbuffer.h \
                         src/sanitycheck.c \
                         src/server.c \
+                        src/server/io.c \
                         src/stats.c \
                         src/store.c \
                         src/strerror.c \
