@@ -125,13 +125,13 @@ libcouchbase_la_SOURCES = \
                         src/arithmetic.c \
                         src/base64.c \
                         src/behavior.c \
-                        src/bucketconfig/io.c \
+                        src/bucketconfig/bconf_io.c \
+                        src/bucketconfig/bconf_parse.c \
                         src/compat.c \
                         src/config_static.h \
                         src/config_cache.c \
                         src/cookie.c \
                         src/error.c \
-                        src/event.c \
                         src/flush.c \
                         src/get.c \
                         src/gethrtime.c \
@@ -140,8 +140,11 @@ libcouchbase_la_SOURCES = \
                         src/hashset.c \
                         src/hashset.h \
                         src/http.c \
+                        src/http/http_io.c \
+                        src/http/http_parse.c \
                         src/instance.c \
                         src/io/connect.c \
+                        src/io/readwrite.c \
                         src/internal.h \
                         src/io/lcbio.h \
                         src/observe.c \
@@ -151,8 +154,9 @@ libcouchbase_la_SOURCES = \
                         src/ringbuffer.h \
                         src/sanitycheck.c \
                         src/server.c \
-                        src/server/io.c \
-                        src/server/connect.c \
+                        src/server/server_io.c \
+                        src/server/server_connect.c \
+                        src/server/server_parse.c \
                         src/stats.c \
                         src/store.c \
                         src/strerror.c \
