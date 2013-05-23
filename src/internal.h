@@ -127,8 +127,6 @@ extern "C" {
          */
         lcb_type_t type;
 
-        ringbuffer_t output;
-        ringbuffer_t input;
         /** The URL request to send to the server */
         char *http_uri;
 
@@ -249,9 +247,6 @@ extern "C" {
         char *couch_api_base;
         /** The REST API server as hostname:port */
         char *rest_api_server;
-        /** The socket to the server */
-        /** The output buffer for this server */
-        ringbuffer_t output;
         /** The sent buffer for this server so that we can resend the
          * command to another server if the bucket is moved... */
         ringbuffer_t cmd_log;
@@ -262,9 +257,6 @@ extern "C" {
          */
         ringbuffer_t pending;
         ringbuffer_t pending_cookies;
-
-        /** The input buffer for this server */
-        ringbuffer_t input;
 
         /** The set of the pointers to HTTP requests to couchbase (Views and
          * Management API) */
@@ -322,10 +314,6 @@ extern "C" {
         lcb_http_complete_callback on_complete;
         /** This callback will be executed for each chunk of the response */
         lcb_http_data_callback on_data;
-        /** The outgoing buffer for this request */
-        ringbuffer_t output;
-        /** The incoming buffer for this request */
-        ringbuffer_t input;
         /** The accumulator for result (when chunked mode disabled) */
         ringbuffer_t result;
         /** The cookie belonging to this request */
@@ -530,7 +518,6 @@ extern "C" {
     void lcb_schedule_config_cache_refresh(lcb_t instance);
     void lcb_update_vbconfig(lcb_t instance,
                              VBUCKET_CONFIG_HANDLE next_config);
-
 
     void lcb_instance_connerr(lcb_t instance,
                                      lcb_error_t err,
