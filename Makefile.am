@@ -152,6 +152,7 @@ libcouchbase_la_SOURCES = \
                         src/sanitycheck.c \
                         src/server.c \
                         src/server/io.c \
+                        src/server/connect.c \
                         src/stats.c \
                         src/store.c \
                         src/strerror.c \
