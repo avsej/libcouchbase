@@ -34,10 +34,11 @@ static void lcb_server_timeout_handler(lcb_socket_t sock,
                                        void *arg)
 {
     lcb_server_t server = arg;
+    lcb_t instance = server->instance;
 
     lcb_purge_single_server(server, LCB_ETIMEDOUT);
-    lcb_update_server_timer(server);
-    lcb_maybe_breakout(server->instance);
+    instance->io->v.v0.delete_timer(instance->io, server->timer);
+    lcb_maybe_breakout(instance);
 
     (void)sock;
     (void)which;
