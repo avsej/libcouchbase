@@ -63,7 +63,12 @@ lcb_error_t lcb_packet_queue_push(lcb_packet_t queue, lcb_packet_t operation)
 
 lcb_packet_t lcb_packet_queue_peek(lcb_packet_t queue)
 {
-    return queue->next;
+    lcb_packet_t ret = NULL;
+
+    if (lcb_packet_queue_not_empty(queue)) {
+        return queue->next;
+    }
+    return ret;
 }
 
 lcb_packet_t lcb_packet_queue_pop(lcb_packet_t queue)

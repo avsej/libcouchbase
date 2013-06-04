@@ -93,8 +93,8 @@ static int parse_single(lcb_server_t c, hrtime_t stop)
         return -1;
     }
     pkt = lcb_packet_queue_peek(c->log);
-    if (header.response.opaque < pkt->opaque &&
-            header.response.opaque > 0) { /* sasl comes with zero opaque */
+    if (pkt == NULL || (header.response.opaque < pkt->opaque &&
+                        header.response.opaque > 0)) { /* sasl comes with zero opaque */
         ringbuffer_consumed(&c->input, nbytes);
         return 1; /* already processed. */
     }
