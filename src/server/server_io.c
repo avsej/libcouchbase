@@ -114,7 +114,6 @@ void lcb_server_event_handler(lcb_socket_t sock, short which, void *arg)
 
         status = lcb_sockrw_write(conn, conn->output);
         if (status != LCB_SOCKRW_WROTE && status != LCB_SOCKRW_WOULDBLOCK) {
-            printf("Neither WROTE nor WOULDBLOCK returned\n");
             event_complete_common(c);
             return;
         }
