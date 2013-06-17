@@ -148,11 +148,32 @@ lcb_error_t lcb_get_replica(lcb_t instance,
     req.message.header.request.datatype = PROTOCOL_BINARY_RAW_BYTES;
     req.message.header.request.opcode = CMD_GET_REPLICA;
     for (ii = 0; ii < num; ++ii) {
-        const void *key = items[ii]->v.v0.key;
-        lcb_size_t nkey = items[ii]->v.v0.nkey;
+        const void *key;
+        lcb_size_t nkey;
+        int replica = 0;
+        lcb_replica_t mode = LCB_REPLICA_FIRST;
+
+        switch (items[ii]->version) {
+        case 0:
+            key = items[ii]->v.v0.key;
+            key = items[ii]->v.v0.nkey;
+            break;
+        case 1:
+            nkey = items[ii]->v.v1.key;
+            nkey = items[ii]->v.v1.nkey;
+            mode = items[ii]->v.v1.mode;
+            replica = items[ii]->v.v1.index;
+            break;
+        default:
+            return lcb_synchandler_return(instance, LCB_EINVAL);
+        }
+
+        if (mode != LCB_REPLICA_SELECT) {
+            replica = 0;
+        }
         vb = vbucket_get_vbucket_by_key(instance->vbucket_config,
                                         key, nkey);
-        idx = vbucket_get_replica(instance->vbucket_config, vb, 0);
+        idx = vbucket_get_replica(instance->vbucket_config, vb, replica);
         if (idx < 0 || idx > (int)instance->nservers) {
             /*
             ** the config says that there is no server yet at that
