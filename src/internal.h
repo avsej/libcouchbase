@@ -62,15 +62,49 @@ extern "C" {
     struct lcb_server_st;
     typedef struct lcb_server_st lcb_server_t;
 
-    /**
-     * Data stored per command in the command-cookie buffer...
-     */
-    struct lcb_command_data_st {
+    lcb_error_t buffer_ensure_capacity(buffer_t *buffer, lcb_size_t size);
+    lcb_error_t buffer_write(buffer_t *buffer, const void *src, lcb_size_t nb);
+    void buffer_destroy(buffer_t *buffer);
+
+    typedef struct lcb_packet_st *lcb_packet_t;
+
+    struct lcb_packet_st {
+        lcb_packet_t prev;
+        lcb_packet_t next;
+        lcb_uint8_t opcode;
+        lcb_uint16_t vbucket;
+        lcb_uint32_t opaque;
+        int replica;
         hrtime_t start;
         const void *cookie;
-        int replica;
-        lcb_uint16_t vbucket;
+        buffer_t *payload; /* pointer to shared buffer */
     };
+
+    lcb_error_t lcb_packet_queue_create(lcb_packet_t *queue);
+    void lcb_packet_queue_destroy(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_init(lcb_packet_t queue);
+    int lcb_packet_queue_not_empty(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_push(lcb_packet_t queue, lcb_packet_t operation);
+    lcb_packet_t lcb_packet_queue_peek(lcb_packet_t queue);
+    lcb_packet_t lcb_packet_queue_pop(lcb_packet_t queue);
+    lcb_error_t lcb_packet_queue_remove(lcb_packet_t operation);
+
+    lcb_error_t lcb_packet_create(lcb_packet_t *packet);
+    void lcb_packet_destroy(lcb_packet_t packet);
+    lcb_error_t lcb_packet_start(lcb_server_t server,
+                                 lcb_packet_t *packet,
+                                 const void *cookie,
+                                 const protocol_binary_request_header *header,
+                                 const void *data,
+                                 lcb_size_t size);
+    lcb_error_t lcb_packet_push(lcb_server_t server,
+                                lcb_packet_t packet);
+    lcb_error_t lcb_packet_retry(lcb_server_t server,
+                                 lcb_packet_t packet);
+    lcb_error_t lcb_packet_write(lcb_packet_t packet,
+                                 const void *data,
+                                 lcb_size_t size);
+
 
     /**
      * Define constants for connection attemptts
