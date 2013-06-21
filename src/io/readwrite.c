@@ -23,6 +23,41 @@
 
 #include "internal.h"
 
+static lcb_error_t lcb_sockrw_iov_fill(lcb_connection_t conn)
+{
+    lcb_packet_t root = server->output;
+    lcb_packet_t pkt = root->next;
+    lcb_uint32_t iov_max = server->instance->io->v.v0.iov_max;
+
+    server->niov = 0;
+    while (pkt != root && server->niov < iov_max) {
+        struct lcb_iovec_st *io = server->iov + server->niov;
+        io->iov_base = pkt->payload->bytes + pkt->payload->nread;
+        io->iov_len = pkt->payload->nbytes - pkt->payload->nread;
+        server->niov++;
+        pkt = pkt->next;
+    }
+    return LCB_SUCCESS;
+}
+
+static lcb_error_t lcb_sockrw_consume(lcb_connection_t conn, lcb_size_t nbytes)
+{
+    lcb_packet_t root = server->output;
+    lcb_packet_t pkt;
+
+    while (nbytes && lcb_packet_queue_not_empty(root)) {
+        pkt = root->next;
+        if (nbytes >= pkt->payload->nbytes) {
+            nbytes -= pkt->payload->nbytes;
+            lcb_packet_queue_remove(server->output->next);
+        } else {
+            /* partially sent packet */
+            pkt->payload->nread = nbytes;
+        }
+    }
+    return LCB_SUCCESS;
+}
+
 lcb_sockrw_status_t lcb_sockrw_v0_read(lcb_connection_t conn, ringbuffer_t *buf)
 {
     struct lcb_iovec_st iov[2];
@@ -78,10 +113,11 @@ lcb_sockrw_status_t lcb_sockrw_v0_write(lcb_connection_t conn,
                                         ringbuffer_t *buf)
 {
     while (buf->nbytes > 0) {
-        struct lcb_iovec_st iov[2];
         lcb_ssize_t nw;
-        ringbuffer_get_iov(buf, RINGBUFFER_READ, iov);
-        nw = conn->instance->io->v.v0.sendv(conn->instance->io, conn->sockfd, iov, 2);
+
+        lcb_sockrw_iov_fill(conn);
+        nw = conn->instance->io->v.v0.sendv(conn->instance->io, conn->sockfd,
+                                            conn->iov, conn->niov);
         if (nw == -1) {
             switch (conn->instance->io->v.v0.error) {
             case EINTR:
@@ -97,7 +133,7 @@ lcb_sockrw_status_t lcb_sockrw_v0_write(lcb_connection_t conn,
                 return LCB_SOCKRW_IO_ERROR;
             }
         } else if (nw > 0) {
-            ringbuffer_consumed(buf, (lcb_size_t)nw);
+            lcb_sockrw_iov_consume(c, (lcb_size_t)nw);
         }
     }
 

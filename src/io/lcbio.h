@@ -47,9 +47,6 @@ extern "C" {
         LCB_SOCKRW_PENDING
     } lcb_sockrw_status_t;
 
-
-
-
     struct lcb_connection_st;
     typedef void (*lcb_connection_handler)(struct lcb_connection_st*, lcb_error_t);
 
@@ -59,6 +56,12 @@ extern "C" {
 
         ringbuffer_t *input;
         ringbuffer_t *output;
+
+        /* containers for sendv/recvv. allocated once server is
+         * created and reused for each transmission */
+        struct lcb_iovec_st *iov;
+        /* number of non-empty entries */
+        lcb_size_t niov;
 
         /** instance */
         lcb_t instance;

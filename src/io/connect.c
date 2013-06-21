@@ -521,5 +521,12 @@ lcb_error_t lcb_connection_init(lcb_connection_t conn, lcb_t instance)
         return LCB_CLIENT_ENOMEM;
     }
 
+    conn->niov = 0;
+    conn->iov = calloc(instance->io->v.v0.iov_max, sizeof(struct lcb_iovec_st));
+    if (conn->iov == NULL) {
+        lcb_conncetion_cleanup(conn);
+        return LCB_CLIENT_ENOMEM;
+    }
+
     return LCB_SUCCESS;
 }
