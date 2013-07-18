@@ -63,7 +63,6 @@ ADD_LIBRARY(lcbutils STATIC
 
 ADD_LIBRARY(couchbase SHARED
             contrib/http_parser/http_parser.c
-            contrib/libvbucket/cJSON.c
             contrib/libvbucket/crc32.c
             contrib/libvbucket/ketama.c
             contrib/libvbucket/rfc1321/md5c.c
