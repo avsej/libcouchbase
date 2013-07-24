@@ -28,6 +28,7 @@ check_PROGRAMS =
 bin_PROGRAMS = tools\cbc.exe tools\cbc_debug.exe
 example_PROGRAMS =
 
+<<<<<<< HEAD
 libcouchbase_SOURCES = \
     contrib\http_parser\http_parser.c \
     contrib\libvbucket\ketama.c \
@@ -62,6 +63,7 @@ libcouchbase_SOURCES = \
     src\io\readwrite.c \
     src\iofactory.c \
     src\isasl.c \
+    src\cntl.c \
     src\list.c \
     src\observe.c \
     src\packet.c \

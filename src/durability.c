@@ -517,7 +517,7 @@ static unsigned long get_grace_interval(lcb_t instance,
     }
 
     if (!ret) {
-        ret = LCB_DURABILITY_DEFAULT_INTERVAL;
+        ret = instance->durability_interval;
 
     } else {
         ret *= 1000; /* msec -> usec */
@@ -595,7 +595,7 @@ lcb_error_t lcb_durability_poll(lcb_t instance,
     dset->instance = instance;
 
     if (!DSET_OPTFLD(dset, timeout)) {
-        DSET_OPTFLD(dset, timeout) = LCB_DURABILITY_DEFAULT_TIMEOUT;
+        DSET_OPTFLD(dset, timeout) = instance->durability_timeout;
     }
 
     if (-1 == verify_critera(instance, dset)) {

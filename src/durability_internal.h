@@ -22,12 +22,6 @@ extern "C" {
  * satisfied yet).
  */
 
-/* default timeout, in microseconds */
-#define LCB_DURABILITY_DEFAULT_TIMEOUT 5000000
-
-/* default interval, in microseconds */
-#define LCB_DURABILITY_DEFAULT_INTERVAL 100000
-
 /**
  * Information a single entry in a durability set
  */
