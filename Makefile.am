@@ -80,7 +80,18 @@ if BUILD_PLUGINS
 pkginclude_HEADERS += \
                      plugins/io/libev/libev_io_opts.h \
                      plugins/io/libevent/libevent_io_opts.h \
-                     plugins/io/select/select_io_opts.h
+                     plugins/io/select/select_io_opts.h \
+                     plugins/io/iocp/iocp_iops.h \
+                     plugins/io/libuv/libuv_io_opts.h
+
+nobase_pkginclude_HEADERS := \
+                             plugins/io/libuv/iops.c \
+                             plugins/io/libuv/lcbuv-source.h \
+                             plugins/io/libuv/plugin.c \
+                             plugins/io/libuv/plugin-internal.h \
+                             plugins/io/libuv/socket.c \
+                             plugins/io/libuv/timer.c \
+                             plugins/io/libuv/util.c
 endif
 
 libhttpparser_la_SOURCES = \
