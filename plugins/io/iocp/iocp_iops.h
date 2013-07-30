@@ -185,6 +185,7 @@ extern "C" {
     void iocp_tmq_del(lcb_list_t *list, iocp_timer_t *timer);
     unsigned long iocp_tmq_next_timeout(lcb_list_t *list, lcb_uint64_t now);
     iocp_timer_t *iocp_tmq_pop(lcb_list_t *list, lcb_uint64_t now);
+    int iocp_tmq_has_pending(lcb_list_t *list);
 
     LIBCOUCHBASE_API
     lcb_error_t lcb_iocp_new_iops(int version, lcb_io_opt_t *ioret, void *arg);
@@ -198,7 +199,10 @@ extern "C" {
         IOCP_FATAL
     };
 
+
+
 #ifdef IOCP_LOG_VERBOSE
+#include <stdio.h>
 #define IOCP_LOG(facil, ...) \
     fprintf(stderr, "[%s] <%s:%d>: ", #facil, __FILE__, __LINE__); \
     fprintf(stderr, __VA_ARGS__); \
