@@ -16,21 +16,3 @@
  */
 
 #include "internal.h"
-
-
-static void lcb_server_timeout_handler(lcb_connection_t conn, lcb_error_t err)
-{
-    lcb_server_t *server = (lcb_server_t*)conn->data;
-    lcb_purge_single_server(server, err);
-    lcb_update_server_timer(server);
-    lcb_maybe_breakout(server->instance);
-}
-
-void lcb_update_server_timer(lcb_server_t *server)
-{
-    lcb_t instance = server->instance;
-    lcb_connection_delete_timer(&server->connection);
-    lcb_connection_update_timer(&server->connection,
-                                instance->timeout.usec,
-                                lcb_server_timeout_handler);
-}

@@ -51,7 +51,7 @@ static int do_read_data(lcb_server_t *c, int allow_read)
     }
 
     if (processed) {
-        lcb_update_server_timer(c);
+        lcb_connection_delay_timer(&c->connection);
     }
 
     if (status == LCB_SOCKRW_WOULDBLOCK || status == LCB_SOCKRW_READ) {
@@ -168,7 +168,7 @@ void lcb_server_v1_read_handler(lcb_sockdata_t *sockptr, lcb_ssize_t nr)
         return;
     }
 
-    lcb_update_server_timer(c);
+    lcb_connection_delay_timer(&c->connection);
 
     stop = gethrtime();
 

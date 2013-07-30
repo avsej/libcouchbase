@@ -562,8 +562,6 @@ extern "C" {
                                        lcb_uint32_t opaque,
                                        lcb_server_t *exc);
 
-    void lcb_update_server_timer(lcb_server_t *server);
-
     void lcb_purge_single_server(lcb_server_t *server,
                                  lcb_error_t error);
 

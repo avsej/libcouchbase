@@ -106,7 +106,6 @@ ADD_LIBRARY(couchbase SHARED
             src/store.c
             src/strerror.c
             src/synchandler.c
-            src/timeout.c
             src/timer.c
             src/timings.c
             src/touch.c
