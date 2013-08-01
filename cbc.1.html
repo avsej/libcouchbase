@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>cbc</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp160576"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cbc — Couchbase command line utility</p></div><div class="refsynopsisdiv"><a id="_synopsis"></a><h2>Synopsis</h2><p><span class="strong"><strong>cbc help</strong></span></p><p><span class="strong"><strong>cbc cat</strong></span> [common options] [-r [<span class="emphasis"><em>VALUE</em></span>]] <span class="emphasis"><em>key</em></span>…</p><p><span class="strong"><strong>cbc cp</strong></span> [common options] [-p] [-r <span class="emphasis"><em>NUMBER</em></span>] [-m <span class="emphasis"><em>NUMBER</em></span>] [-j] <span class="emphasis"><em>filename</em></span>…</p><p><span class="strong"><strong>cbc create</strong></span> [common options] [-f <span class="emphasis"><em>FLAGS</em></span>] [-e <span class="emphasis"><em>VALUE</em></span>] [-a] <span class="emphasis"><em>key</em></span></p><p><span class="strong"><strong>cbc observe</strong></span> [common options] <span class="emphasis"><em>key</em></span>…</p><p><span class="strong"><strong>cbc flush</strong></span> [common options]</p><p><span class="strong"><strong>cbc hash</strong></span> [common options] [-f <span class="emphasis"><em>FILENAME</em></span>] <span class="emphasis"><em>key</em></span>…</p><p><span class="strong"><strong>cbc lock</strong></span> [common options] [-e <span class="emphasis"><em>VALUE</em></span>] <span class="emphasis"><em>key</em></span>…</p><p><span class="strong"><strong>cbc unlock</strong></span> [common options] <span class="emphasis"><em>key</em></span> <span class="emphasis"><em>cas</em></span>…</p><p><span class="strong"><strong>cbc rm</strong></span> [common options] <span class="emphasis"><em>key</em></span>…</p><p><span class="strong"><strong>cbc stats</strong></span> [common options] [<span class="emphasis"><em>stat group</em></span>]…</p><p><span class="strong"><strong>cbc verify</strong></span> [common options] <span class="emphasis"><em>filename</em></span>…</p><p><span class="strong"><strong>cbc version</strong></span> [common options]</p><p><span class="strong"><strong>cbc verbosity</strong></span> [common options] <span class="emphasis"><em>level</em></span></p><p><span class="strong"><strong>cbc view</strong></span> [common options] [-c] [-d <span class="emphasis"><em>DATA</em></span>] [-X <span class="emphasis"><em>METHOD</em></span>] <span class="emphasis"><em>query</em></span></p><p><span class="strong"><strong>cbc admin</strong></span> [common options] [-c] [-d <span class="emphasis"><em>DATA</em></span>] [-X <span class="emphasis"><em>METHOD</em></span>] <span class="emphasis"><em>query</em></span></p><p><span class="strong"><strong>cbc bucket-create</strong></span> [common options] [-B <span class="emphasis"><em>TYPE</em></span>] [-q <span class="emphasis"><em>QUOTA</em></span>] [-a <span class="emphasis"><em>AUTH</em></span>] [-s <span class="emphasis"><em>PASSWORD</em></span>] [-r <span class="emphasis"><em>NUMBER</em></span>] [-p <span class="emphasis"><em>PORT</em></span>] <span class="emphasis"><em>bucketname</em></span>…</p><p><span class="strong"><strong>cbc bucket-delete</strong></span> [common options] <span class="emphasis"><em>bucket</em></span>…</p><p><span class="strong"><strong>cbc bucket-flush</strong></span> [common options] <span class="emphasis"><em>bucket</em></span>…</p><p><span class="strong"><strong>cbc pillowfight</strong></span> [-?] [-h <span class="emphasis"><em>HOST</em></span>] [-b <span class="emphasis"><em>BUCKET</em></span>] [-u <span class="emphasis"><em>USER</em></span>] [-P <span class="emphasis"><em>PASSWORD</em></span>] [-T] [-i <span class="emphasis"><em>ITERATIONS</em></span>] [-I <span class="emphasis"><em>ITEMS</em></span>] [-p <span class="emphasis"><em>PREFIX</em></span>] [-t <span class="emphasis"><em>THREADS</em></span>] [-Q <span class="emphasis"><em>INSTANCES</em></span>] [-l] [-s <span class="emphasis"><em>SEED</em></span>] [-r <span class="emphasis"><em>RATIO</em></span>] [-m <span class="emphasis"><em>MIN</em></span>] [-M <span class="emphasis"><em>MAX</em></span>] [-d]</p></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>cbc is a command line utility that allows you to communicate with your
+Couchbase Server cluster from the command line prompt.</p></div><div class="refsect1"><a id="_common_options"></a><h2>COMMON OPTIONS</h2><p>The following options are supported:</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-?, --help</strong></span>
+</span></dt><dd>
+    Display usage information and exit.
+</dd><dt><span class="term">
+<span class="strong"><strong>-h, --host</strong></span>=<span class="emphasis"><em>HOST</em></span>
+</span></dt><dd>
+    Specify the list of hosts to connect to (default: <span class="emphasis"><em>127.0.0.1:8091</em></span>).
+</dd><dt><span class="term">
+<span class="strong"><strong>-b, --bucket</strong></span>=<span class="emphasis"><em>BUCKET</em></span>
+</span></dt><dd>
+    Specify the bucket to use (default: <span class="emphasis"><em>default</em></span>).
+</dd><dt><span class="term">
+<span class="strong"><strong>-u, --user</strong></span>=<span class="emphasis"><em>USER</em></span>
+</span></dt><dd>
+    Specify the username used for authentication to the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>-P, --password</strong></span>=<span class="emphasis"><em>PASSWORD</em></span>
+</span></dt><dd>
+    Specify the password used for authentication to the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>-T, --enable-timings</strong></span>
+</span></dt><dd>
+    Enable the recording of the timing of commands and building histograms.
+</dd><dt><span class="term">
+<span class="strong"><strong>-t, --timeout</strong></span>=<span class="emphasis"><em>TIMEOUT</em></span>
+</span></dt><dd>
+    Specify timeout value in microseconds (default: 2500000)
+</dd></dl></div></div><div class="refsect1"><a id="_subcommands"></a><h2>SUBCOMMANDS</h2><p>The following subcommands are supported:</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>cbc help</strong></span>
+</span></dt><dd>
+    Display usage information and exit.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc cat</strong></span> [common options] [-r [<span class="emphasis"><em>VALUE</em></span>]] <span class="emphasis"><em>key</em></span>…
+</span></dt><dd><p class="simpara">
+    Print the contents of the value for the key to standard output.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-r, --replicas</strong></span>[=<span class="emphasis"><em>VALUE</em></span>]
+</span></dt><dd><p class="simpara">
+        Read key(s) from replicas: (default: <span class="emphasis"><em>first</em></span>)). Following strategies available:
+</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>first</em></span></p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>try all replica from first in a sequence until first successful response</p></td></tr><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>all</em></span></p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>try all replicas in parallel</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>N, where 0 &lt; N &lt; number of replicas</p></td><td style="" align="left" valign="top"><p>read from selected replica only</p></td></tr></tbody></table></div></dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc cp</strong></span> [common options] [-p] [-r <span class="emphasis"><em>NUMBER</em></span>] [-m <span class="emphasis"><em>NUMBER</em></span>] [-j] <span class="emphasis"><em>filename</em></span>…
+</span></dt><dd><p class="simpara">
+    Store the content of a file under the specified key in the cluster.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-p, --persisted</strong></span>
+</span></dt><dd>
+        Ensure that key has been persisted to the primary node.
+</dd><dt><span class="term">
+<span class="strong"><strong>-r, --replicated</strong></span>=<span class="emphasis"><em>NUMBER</em></span>
+</span></dt><dd>
+        Ensure that the key has been replicated and persisted to given
+        <span class="emphasis"><em>NUMBER</em></span> of replicas.
+</dd><dt><span class="term">
+<span class="strong"><strong>-m, --max-tries</strong></span>=<span class="emphasis"><em>NUMBER</em></span>
+</span></dt><dd>
+        The number of attempts for observing keys (default: 5).
+</dd><dt><span class="term">
+<span class="strong"><strong>-j, --json</strong></span>
+</span></dt><dd>
+        Treat the value as a JSON document (take key from <span class="emphasis"><em>_id</em></span>
+        attribute). This option is only valid if the libyajl2 is
+        present.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc create</strong></span> [common options] [-f <span class="emphasis"><em>FLAGS</em></span>] [-e <span class="emphasis"><em>VALUE</em></span>] [-a] <span class="emphasis"><em>key</em></span>
+</span></dt><dd><p class="simpara">
+    Create a key in the cluster by reading the the value from standard
+    input.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-f, --flag</strong></span>=<span class="emphasis"><em>FLAGS</em></span>
+</span></dt><dd>
+        The flags to associate with the key.
+</dd><dt><span class="term">
+<span class="strong"><strong>-e, --exptime</strong></span>=<span class="emphasis"><em>VALUE</em></span>
+</span></dt><dd>
+        The expiration time for the key. Values larger than
+        30*24*60*60 seconds (30 days) are interpreted as absolute
+        times (from the epoch).
+</dd><dt><span class="term">
+<span class="strong"><strong>-a</strong></span>
+</span></dt><dd>
+        Fail if an object exist in the database for that key.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc observe</strong></span> [common options] <span class="emphasis"><em>key</em></span>…
+</span></dt><dd>
+    Observe a key in the cache.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc flush</strong></span> [common options]
+</span></dt><dd>
+    Remove all keys from the cluster. The flush subcommand is only
+    supported on memcached buckets. To flush a Couchbase bucket you
+    need use bucket-flush.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc hash</strong></span> [common options] [-f <span class="emphasis"><em>FILENAME</em></span>] <span class="emphasis"><em>key</em></span>…
+</span></dt><dd><p class="simpara">
+    Hash key(s) and print out useful info.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-f, --config-file</strong></span>=<span class="emphasis"><em>FILENAME</em></span>
+</span></dt><dd>
+        <span class="emphasis"><em>FILENAME</em></span> shall be a plain text file containing an
+        alternative cluster configuration (in JSON) to use.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc lock</strong></span> [common options] [-e <span class="emphasis"><em>VALUE</em></span>] <span class="emphasis"><em>key</em></span>…
+</span></dt><dd><p class="simpara">
+    Lock and retrieve the value for a key. The lock is held for the
+    object until it expires (timing out) or from a manual unlock
+    command. Consult your Couchbase documentation for more information
+    about locking of objects.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-e, --exptime</strong></span>=<span class="emphasis"><em>VALUE</em></span>
+</span></dt><dd>
+        The expiry time for the lock.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc unlock</strong></span> [common options] <span class="emphasis"><em>key</em></span> <span class="emphasis"><em>cas</em></span>…
+</span></dt><dd>
+    Unlock the key previously locked with lock. You have to specify
+    the same cas value as returned by the lock command in order to
+    successfully  unlock  the keys.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc rm</strong></span> [common options] <span class="emphasis"><em>key</em></span>…
+</span></dt><dd>
+    Remove a number of keys from the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc stats</strong></span> [common options] [<span class="emphasis"><em>stat group</em></span>]…
+</span></dt><dd>
+    Retrieve various statistics from the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc verify</strong></span> [common options] <span class="emphasis"><em>filename</em></span>…
+</span></dt><dd>
+    Verify the content for the key represented by the filename in the
+    cache is the same as the file content.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc version</strong></span> [common options]
+</span></dt><dd>
+    Print the version numbers for cbc and libcouchbase.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc verbosity</strong></span> [common options] <span class="emphasis"><em>level</em></span>
+</span></dt><dd><p class="simpara">
+    Set verbosity level. The level may be one of the following:
+</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>detail</em></span></p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>This will cause the nodes to generate an insane amount of data. It shoud not be used unless you know what you’re doing.</p></td></tr><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>debug</em></span></p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>This will cause the nodes to generate a lot of data. It should not be used unless you know what you’re doing.</p></td></tr><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>info</em></span></p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>This  will  cause  the nodes to generate lot of data (dumping each command being executed). You should avoid using this unless you’re searching for a bug. It will affect your performance.</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p><span class="emphasis"><em>warning</em></span></p></td><td style="" align="left" valign="top"><p>Only warnings will be reported. This is what you normally want!</p></td></tr></tbody></table></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc view</strong></span> [common options] [-c] [-d <span class="emphasis"><em>DATA</em></span>] [-X <span class="emphasis"><em>METHOD</em></span>] <span class="emphasis"><em>query</em></span>
+</span></dt><dd><p class="simpara">
+    Execute Couchbase view (aka map/reduce) request.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-c, --chunked</strong></span>
+</span></dt><dd>
+        Use chunked callback to stream the data
+</dd><dt><span class="term">
+<span class="strong"><strong>-d, --data</strong></span>=<span class="emphasis"><em>DATA</em></span>
+</span></dt><dd>
+        HTTP body data for POST or PUT requests, e.g. <span class="emphasis"><em>{"keys": ["key1", "key2"]}</em></span>
+</dd><dt><span class="term">
+<span class="strong"><strong>-X, --request</strong></span>=<span class="emphasis"><em>METHOD</em></span>
+</span></dt><dd>
+        HTTP request method, possible values <span class="emphasis"><em>GET</em></span> (default), <span class="emphasis"><em>POST</em></span>,
+        <span class="emphasis"><em>PUT</em></span>, <span class="emphasis"><em>DELETE</em></span>.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc admin</strong></span> [common options] [-c] [-d <span class="emphasis"><em>DATA</em></span>] [-X <span class="emphasis"><em>METHOD</em></span>] <span class="emphasis"><em>query</em></span>
+</span></dt><dd><p class="simpara">
+    Execute request to management REST API.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-c, --chunked</strong></span>
+</span></dt><dd>
+        Use chunked callback to stream the data
+</dd><dt><span class="term">
+<span class="strong"><strong>-d, --data</strong></span>=<span class="emphasis"><em>DATA</em></span>
+</span></dt><dd>
+        HTTP body data for POST or PUT requests, e.g. <span class="emphasis"><em>{"keys": ["key1", "key2"]}</em></span>
+</dd><dt><span class="term">
+<span class="strong"><strong>-X, --request</strong></span>=<span class="emphasis"><em>METHOD</em></span>
+</span></dt><dd>
+        HTTP request method, possible values <span class="emphasis"><em>GET</em></span> (default), <span class="emphasis"><em>POST</em></span>,
+        <span class="emphasis"><em>PUT</em></span>, <span class="emphasis"><em>DELETE</em></span>.
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc bucket-create</strong></span> [common options] [-B <span class="emphasis"><em>TYPE</em></span>] [-q <span class="emphasis"><em>QUOTA</em></span>] [-a <span class="emphasis"><em>AUTH</em></span>] [-s <span class="emphasis"><em>PASSWORD</em></span>] [-r <span class="emphasis"><em>NUMBER</em></span>] [-p <span class="emphasis"><em>PORT</em></span>] <span class="emphasis"><em>bucketname</em></span>…
+</span></dt><dd><p class="simpara">
+    Create a bucket in the cluster.
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-B, --bucket-type</strong></span>=<span class="emphasis"><em>TYPE</em></span>
+</span></dt><dd>
+        Specify the type of bucket to create. Type may be one of
+        <span class="emphasis"><em>couchbase</em></span> (default), <span class="emphasis"><em>memcached</em></span>.
+</dd><dt><span class="term">
+<span class="strong"><strong>-q, --ram-quota</strong></span>=<span class="emphasis"><em>QUOTA</em></span>
+</span></dt><dd>
+        RAM quota in megabytes (default: 100).
+</dd><dt><span class="term">
+<span class="strong"><strong>-a, --auth-type</strong></span>=<span class="emphasis"><em>AUTH</em></span>
+</span></dt><dd>
+        Type of bucket authentication, type may be one of <span class="emphasis"><em>none</em></span> or <span class="emphasis"><em>sasl</em></span> (default).
+</dd><dt><span class="term">
+<span class="strong"><strong>-s, --sasl-password</strong></span>=<span class="emphasis"><em>PASSWORD</em></span>
+</span></dt><dd>
+        Password used for SASL authentication (default "").
+</dd><dt><span class="term">
+<span class="strong"><strong>-r, --replica-number</strong></span>=<span class="emphasis"><em>NUMBER</em></span>
+</span></dt><dd>
+        The number of replicas to create for each key. The value
+        should be in the range [0-3] (default 1).
+</dd><dt><span class="term">
+<span class="strong"><strong>-p, --proxy-port</strong></span>=<span class="emphasis"><em>PORT</em></span>
+</span></dt><dd>
+        The port number the proxy should provide access to this
+        bucket (default: 11211).
+</dd></dl></div></dd><dt><span class="term">
+<span class="strong"><strong>cbc bucket-delete</strong></span> [common options] <span class="emphasis"><em>bucket</em></span>…
+</span></dt><dd>
+    Delete the named buckets from the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc bucket-flush</strong></span> [common options] <span class="emphasis"><em>bucket</em></span>…
+</span></dt><dd>
+    Flush (remove all data) from the named buckets. Please note that
+    you need to have flush enabled on the specified bucket to use this
+    command successfully.
+</dd><dt><span class="term">
+<span class="strong"><strong>cbc pillowfight</strong></span> [-?] [-h <span class="emphasis"><em>HOST</em></span>] [-b <span class="emphasis"><em>BUCKET</em></span>] [-u <span class="emphasis"><em>USER</em></span>] [-P <span class="emphasis"><em>PASSWORD</em></span>] [-T] [-i <span class="emphasis"><em>ITERATIONS</em></span>] [-I <span class="emphasis"><em>ITEMS</em></span>] [-p <span class="emphasis"><em>PREFIX</em></span>] [-t <span class="emphasis"><em>THREADS</em></span>] [-Q <span class="emphasis"><em>INSTANCES</em></span>] [-l] [-s <span class="emphasis"><em>SEED</em></span>] [-r <span class="emphasis"><em>RATIO</em></span>] [-m <span class="emphasis"><em>MIN</em></span>] [-M <span class="emphasis"><em>MAX</em></span>] [-d]
+</span></dt><dd><p class="simpara">
+    Generate test load for the cluster. Currenly only one workload
+    type available: mixed SET and GET operations (see <span class="emphasis"><em>--ratio</em></span> option
+    below).
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>-?, --help</strong></span>
+</span></dt><dd>
+        Display usage information and exit.
+</dd><dt><span class="term">
+<span class="strong"><strong>-h, --host</strong></span>=<span class="emphasis"><em>HOST</em></span>
+</span></dt><dd>
+        Specify the list of hosts to connect to (default: <span class="emphasis"><em>127.0.0.1:8091</em></span>).
+</dd><dt><span class="term">
+<span class="strong"><strong>-b, --bucket</strong></span>=<span class="emphasis"><em>BUCKET</em></span>
+</span></dt><dd>
+        Specify the bucket to use (default: <span class="emphasis"><em>default</em></span>).
+</dd><dt><span class="term">
+<span class="strong"><strong>-u, --user</strong></span>=<span class="emphasis"><em>USER</em></span>
+</span></dt><dd>
+        Specify the username used for authentication to the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>-P, --password</strong></span>=<span class="emphasis"><em>PASSWORD</em></span>
+</span></dt><dd>
+        Specify the password used for authentication to the cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>-T, --enable-timings</strong></span>
+</span></dt><dd>
+        Enable the recording of the timing of commands and building histograms.
+</dd><dt><span class="term">
+<span class="strong"><strong>-i, --iterations</strong></span>=<span class="emphasis"><em>ITERATIONS</em></span>
+</span></dt><dd>
+        Number of iterations to run (???) (default: 1000)
+</dd><dt><span class="term">
+<span class="strong"><strong>-I, --num-items</strong></span>=<span class="emphasis"><em>ITEMS</em></span>
+</span></dt><dd>
+        Number of items to operate on (default: 1000)
+</dd><dt><span class="term">
+<span class="strong"><strong>-p, --key-prefix</strong></span>=<span class="emphasis"><em>PREFIX</em></span>
+</span></dt><dd>
+        Use the following prefix for keys (default: "")
+</dd><dt><span class="term">
+<span class="strong"><strong>-t, --num-threads</strong></span>=<span class="emphasis"><em>THREADS</em></span>
+</span></dt><dd>
+        The number of threads to use (default: 1)
+</dd><dt><span class="term">
+<span class="strong"><strong>-Q, --num-instances</strong></span>=<span class="emphasis"><em>INSTANCES</em></span>
+</span></dt><dd>
+        The number of connection instances to put into the shared
+        connection pool (default 1)
+</dd><dt><span class="term">
+<span class="strong"><strong>-l, --loop</strong></span>
+</span></dt><dd>
+        Run load in an infinite loop. Could be terminated by SIGINT (Ctrl-C).
+</dd><dt><span class="term">
+<span class="strong"><strong>-s, --random-seed</strong></span>=<span class="emphasis"><em>SEED</em></span>
+</span></dt><dd>
+        Specify random seed (default 0)
+</dd><dt><span class="term">
+<span class="strong"><strong>-r, --ratio</strong></span>=<span class="emphasis"><em>RATIO</em></span>
+</span></dt><dd>
+        Specify SET/GET command ratio (default: 33, i.e. 33% SETs and 67% GETs)
+</dd><dt><span class="term">
+<span class="strong"><strong>-m, --min-size</strong></span>=<span class="emphasis"><em>MIN</em></span>
+</span></dt><dd>
+        Specify minimum size of payload, i.e. document body (default: 50)
+</dd><dt><span class="term">
+<span class="strong"><strong>-M, --max-size</strong></span>=<span class="emphasis"><em>MAX</em></span>
+</span></dt><dd>
+        Specify maximum size of payload (default: 5120)
+</dd><dt><span class="term">
+<span class="strong"><strong>-d, --dumb</strong></span>
+</span></dt><dd>
+        Behave like legacy memcached client (default: false). Useful
+        to check moxi for example, or other memcached implementations.
+</dd></dl></div></dd></dl></div></div><div class="refsect1"><a id="_examples"></a><h2>EXAMPLES</h2><p>Example 1. Copy a file into the cluster. The following command copies
+the file mynote.txt located in the current directory into the cluster:</p><pre class="literallayout">shell&gt; cbc cp mynote.txt
+Stored "mynote.txt" CAS:d8062155b1100000</pre><p>Example 2. Observe a key in the cluster. The following command
+retrieves information about the key named mynote.txt:</p><pre class="literallayout">shell&gt; cbc observe mynote.txt
+PERSISTED "mynote.txt" CAS:313e468316000000 IsMaster:true TimeToPersist:0 TimeToReplicate:0</pre><p>Example 3. The following command shows you how to use cbc hash:</p><pre class="literallayout">shell&gt; cbc hash key1 key2 key3
+"key1"    vBucket:92 Server:"127.0.0.1:12000" CouchAPI:"http://127.0.0.1:9500/default" Replicas:"127.0.0.1:12000"
+"key2"    vBucket:341 Server:"127.0.0.1:12000" CouchAPI:"http://127.0.0.1:9500/default" Replicas:"127.0.0.1:12000"
+"key3"    vBucket:594 Server:"127.0.0.1:12000" CouchAPI:"http://127.0.0.1:9500/default" Replicas:"127.0.0.1:12000"</pre><p>Example 4. Create a bucket. The following command shows you how to
+create a bucket in the cache.  This is a privileged operation so you
+need to authenticate to the cluster:</p><pre class="literallayout">shell&gt; cbc bucket-create -u Administrator -P secret --bucket-type=memcached --ram-quota=64 --auth-type=sasl --sasl-password=secret --replica-number=0 --proxy-port=11211 mybucket
+Server: Couchbase Server 2.0.0r_521_g67b4898
+Pragma: no-cache
+Location: /pools/default/buckets/mybucket
+Date: Tue, 06 Nov 2012 11:04:40 GMT
+Content-Length: 0
+Cache-Control: no-cache
+"/pools/default/buckets": OK Size:0</pre><p>Example 5. Flush a bucket. The following command shows you how to
+flush (remove all items) in the bucket named "mybucket":</p><pre class="literallayout">shell&gt; cbc bucket-flush mybucket
+Server: Couchbase Server 2.0.0r_521_g67b4898
+Pragma: no-cache
+Date: Tue, 06 Nov 2012 11:12:33 GMT
+Content-Length: 0
+Cache-Control: no-cache
+"/pools/default/buckets/mybucket/controller/doFlush": OK Size:0</pre><p>Example 6. Delete a bucket. The following command shows you delete the
+bucket named "mybucket". This is a privileged operation so you need
+to authenticate to the cluster:</p><pre class="literallayout">shell&gt; cbc bucket-delete -u Administrator -P secret --timeout=10000000 mybucket
+Server: Couchbase Server 2.0.0r_521_g67b4898
+Pragma: no-cache
+Date: Tue, 06 Nov 2012 11:25:57 GMT
+Content-Length: 0
+Cache-Control: no-cache
+"/pools/default/buckets/mybucket": OK Size:0</pre><p>Example 7. Fetch stats. The following command shows how to determine
+default and maximum values for GETL operation:</p><pre class="literallayout">shell&gt; cbc stats | grep ep_getl
+localhost:11210    ep_getl_default_timeout 15
+localhost:11210    ep_getl_max_timeout     30</pre><p>Example 8. Fetch stats. The following command shows how to get memory
+statistics for each node in the cluster using stats group <span class="emphasis"><em>memory</em></span>:</p><pre class="literallayout">shell&gt; cbc stats memory
+localhost:11210    bytes   16949680
+localhost:11210    mem_used        16949680
+localhost:11210    ep_kv_size      8396
+localhost:11210    ep_value_size   7996
+localhost:11210    ep_overhead     13838896
+localhost:11210    ep_max_data_size        104857600
+localhost:11210    ep_mem_low_wat  78643200
+localhost:11210    ep_mem_high_wat 89128959
+localhost:11210    ep_oom_errors   0
+localhost:11210    ep_tmp_oom_errors       0
+localhost:11210    ep_mem_tracker_enabled  true
+localhost:11210    tcmalloc_current_thread_cache_bytes     1063496
+localhost:11210    tcmalloc_max_thread_cache_bytes 4194304
+localhost:11210    tcmalloc_unmapped_bytes 0
+localhost:11210    total_allocated_bytes   67322792
+localhost:11210    total_fragmentation_bytes       2710616
+localhost:11210    total_free_bytes        221184
+localhost:11210    total_heap_bytes        70254592</pre><p>Example 9. Create design document. The following command shows how to
+save new design document into the bucket.</p><pre class="literallayout">shell&gt; cbc view -XPUT -d'{"views":{"all":{"map":"function(doc,meta){emit(meta.id,null)}"}}}' _design/blog
+Server: MochiWeb/1.0 (Any of you quaids got a smint?)
+Location: http://localhost:8092/default/_design/blog
+Date: Thu, 01 Aug 2013 13:13:57 GMT
+Content-Type: application/json
+Content-Length: 32
+Cache-Control: must-revalidate
+"_design/blog": OK Size:32
+{"ok":true,"id":"_design/blog"}</pre><p>Example 10. Fetch views. The following command shows how to fetch a
+view from the cluster.</p><pre class="literallayout">shell&gt; cbc view _design/blog/_view/all
+Transfer-Encoding: chunked
+Server: MochiWeb/1.0 (Any of you quaids got a smint?)
+Date: Thu, 01 Aug 2013 13:19:32 GMT
+Content-Type: application/json
+Cache-Control: must-revalidate
+"_design/blog/_view/all": OK Size:174
+{"total_rows":3,"rows":[
+{"id":".gitignore","key":".gitignore","value":null},
+{"id":"foo","key":"foo","value":null},
+{"id":"pool_foo","key":"pool_foo","value":null}
+]
+}</pre></div><div class="refsect1"><a id="_files"></a><h2>FILES</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>~/.cbcrc</strong></span>
+</span></dt><dd>
+    Default values used by cbc. See <a class="ulink" href="cbcrc.4.html" target="_top">cbcrc(4)</a> for more information
+</dd></dl></div></div><div class="refsect1"><a id="_environment_variables"></a><h2>ENVIRONMENT VARIABLES</h2><p>The following environment variables may be used to specify
+configuration values. If specified they override the value  specified
+in <span class="emphasis"><em>~/.cbcrc</em></span> (but options specified on the command line will override
+environment variables).</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>COUCHBASE_CLUSTER_URI</strong></span>
+</span></dt><dd>
+    This is a list separated by semicolon of hostnames (with an
+    optional port) to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>COUCHBASE_CLUSTER_USER</strong></span>
+</span></dt><dd>
+    This is the username used during authentication to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>COUCHBASE_CLUSTER_PASSWORD</strong></span>
+</span></dt><dd>
+    This is the password used during authentication to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>COUCHBASE_CLUSTER_BUCKET</strong></span>
+</span></dt><dd>
+    This is the name of the bucket you would like to use.
+</dd><dt><span class="term">
+<span class="strong"><strong>LIBCOUCHBASE_EVENT_PLUGIN_NAME</strong></span>
+</span></dt><dd>
+    Override  type  of  the  IO  backend. The value should be either
+    name or path to IO plugin. Currently there are two names
+    recognized (depending on plugin availability): <span class="emphasis"><em>libev</em></span> and
+    <span class="emphasis"><em>libevent</em></span>. Also there is a plugin which is built into the core of
+    library: <span class="emphasis"><em>select</em></span>. In case of path to custom IO plugin, also
+    symbol name required, see <span class="emphasis"><em>LIBCOUCHBASE_EVENT_PLUGIN_SYMBOL</em></span>
+    below.
+</dd><dt><span class="term">
+<span class="strong"><strong>LIBCOUCHBASE_EVENT_PLUGIN_SYMBOL</strong></span>
+</span></dt><dd>
+    Symbol which should be accessibe in the plugin. The library will
+    use the function, associated with the symbol to create new
+    instances of the IO object.
+</dd></dl></div></div><div class="refsect1"><a id="_attributes"></a><h2>ATTRIBUTES</h2><p>See <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a> for descriptions of the following attributes:</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><thead><tr><th style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE TYPE      </th><th style="border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE VALUE</th></tr></thead><tbody><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>Interface Stability</p></td><td style="" align="left" valign="top"><p>Volatile</p></td></tr></tbody></table></div></div><div class="refsect1"><a id="_see_also"></a><h2>SEE ALSO</h2><p>Copyright 2010-2013 Couchbase, Inc.</p><p>Learn more at <a class="ulink" href="http://www.couchbase.com/communities/c" target="_top">http://www.couchbase.com/communities/c</a>.</p><p><a class="ulink" href="cbcrc.4.html" target="_top">cbcrc(4)</a>, <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a></p></div></div></body></html>

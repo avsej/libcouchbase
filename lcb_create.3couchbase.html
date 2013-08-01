@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>lcb_create</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp166880"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>lcb_create — Create instance</p></div><div class="refsynopsisdiv"><a id="_synopsis"></a><h2>Synopsis</h2><p>cc [ flag … ] file… -lcouchbase [ library … ]</p><pre class="literallayout">#include &lt;libcouchbase/couchbase.h&gt;</pre><pre class="literallayout">lcb_error_t lcb_create(lcb_t *instance,
+                       const struct lcb_create_st *options);</pre></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>lcb_create() creates and stores the newly created instance in the instance
+parameter. If the options parameter is set to NULL it tries to connect to
+the default bucket on "127.0.0.1". lcb_create_st is a structure defined
+in &lt;libcouchbase/arguments.h&gt;:</p><pre class="literallayout">struct lcb_create_st {
+    int version; /* Specifies which filed in v to use */
+    union {
+        struct {
+            const char *host;   /* host (list) to use */
+            const char *user;   /* username for authentication */
+            const char *passwd; /* password for authentication */
+            const char *bucket; /* bucket to connect to */
+            struct lcb_io_opt_st *io; /* IO instance to use */
+        } v0;
+        struct {
+            const char *host;   /* host (list) to use */
+            const char *user;   /* username for authentication */
+            const char *passwd; /* password for authentication */
+            const char *bucket; /* bucket to connect to */
+            struct lcb_io_opt_st *io; /* IO instance to use */
+            lcb_type_t type;    /* type of handle */
+        } v1;
+    } v;</pre><p>A lcb_create_st structure should be initialized by using memset to 0, causing
+the default values to be used for all options not specified.</p><p>The "version" member specifies how the "v" union should be
+interpreted. The only difference between version 0 and version 1 is
+that version 1 allows you to create an instance to use for http
+requests (without binding to a bucket).</p><p>Hosts may be specified as a list of hosts separated by <span class="emphasis"><em>;</em></span>. If the
+Couchbase cluster is using a non-standard port, it may be specified by
+appending ":port" per host. ex: "host1;host2:9000;host3". The hostname
+parameter may alternatively be specified as an URI like:
+<a class="ulink" href="http://hostname:8091/pools" target="_top">http://hostname:8091/pools</a>. libcouchbase does not support any other
+schema than http, and the only supported path is "/pools". If no value
+is specified for host, "localhost:8091" is used.</p><p>If specified user and password specifies the credentials used for
+authorization. It is recommended to use principle of least privilege
+when accessing the cluster, i.e. when you only need to perform data
+operations, you should use bucket-level credentials instead of
+Administrator account (see examples 3 and 4).</p><p>If specified bucket specifies the bucket in the cluster to connect
+to. If not specified the "default" bucket is selected.</p><p>If specified io specifies the io instance used for communications. See
+<a class="ulink" href="lcb_create_io_ops.3couchbase.html" target="_top">lcb_create_io_ops(3couchbase)</a> for more information. If not specified a
+default io instance will be created.</p></div><div class="refsect1"><a id="_return_values"></a><h2>RETURN VALUES</h2><p>lcb_create() returns the LCB_SUCCESS on success, or a specific error
+code upon failure. See <a class="ulink" href="lcb_strerror.3couchbase.html" target="_top">lcb_strerror(3couchbase)</a> for more information.</p></div><div class="refsect1"><a id="_examples"></a><h2>EXAMPLES</h2><p>Example 1: Create an instance using the default values:</p><pre class="literallayout">lcb_t instance;
+lcb_error_t err = lcb_create(&amp;instance, NULL);
+if (err != LCB_SUCCESS) {
+    fprintf(stderr, "Failed to create instance: %s\n",
+            lcb_strerror(NULL, err));
+    exit(EXIT_FAILURE);
+}</pre><p>Example 2: Provide a special serverlist</p><pre class="literallayout">lcb_t instance;
+lcb_error_t err;
+struct lcb_create_st options;</pre><pre class="literallayout">memset(&amp;options, 0, sizeof(options));
+options.v.v0.host = "host1;host2;host3";
+err = lcb_create(&amp;instance, &amp;options);
+if (err != LCB_SUCCESS) {
+    fprintf(stderr, "Failed to create instance: %s\n",
+            lcb_strerror(NULL, err));
+    exit(EXIT_FAILURE);
+}</pre><p>Example 3: Create an handle to use for management requests</p><pre class="literallayout">lcb_t instance;
+lcb_error_t err;
+struct lcb_create_st options;</pre><pre class="literallayout">memset(&amp;options, 0, sizeof(options));
+options.version = 1;
+options.v.v1.host = "host1";
+options.v.v1.user = "Administrator";
+options.v.v1.passwd = "secret";
+options.v.v1.type = LCB_TYPE_CLUSTER;</pre><pre class="literallayout">err = lcb_create(&amp;instance, &amp;options);
+if (err != LCB_SUCCESS) {
+    fprintf(stderr, "Failed to create instance: %s\n",
+            lcb_strerror(NULL, err));
+    exit(EXIT_FAILURE);
+}</pre><p>Example 4: Create an handle for data requests to protected bucket</p><pre class="literallayout">lcb_t instance;
+lcb_error_t err;
+struct lcb_create_st options;</pre><pre class="literallayout">memset(&amp;options, 0, sizeof(options));
+options.version = 1;
+options.v.v1.host = "example.com:8091;example.org";
+options.v.v1.bucket = "protected";
+options.v.v1.user = "protected";
+options.v.v1.passwd = "secret";
+options.v.v1.type = LCB_TYPE_BUCKET;</pre><pre class="literallayout">err = lcb_create(&amp;instance, &amp;options);
+if (err != LCB_SUCCESS) {
+    fprintf(stderr, "Failed to create instance: %s\n",
+            lcb_strerror(NULL, err));
+    exit(EXIT_FAILURE);
+}</pre></div><div class="refsect1"><a id="_attributes"></a><h2>ATTRIBUTES</h2><p>See <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a> for descriptions of the following attributes:</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><thead><tr><th style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE TYPE      </th><th style="border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE VALUE</th></tr></thead><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Interface Stability</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Committed</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>MT-Level</p></td><td style="" align="left" valign="top"><p>MT-Safe</p></td></tr></tbody></table></div></div><div class="refsect1"><a id="_see_also"></a><h2>SEE ALSO</h2><p>Copyright 2010-2013 Couchbase, Inc.</p><p>Learn more at <a class="ulink" href="http://www.couchbase.com/communities/c" target="_top">http://www.couchbase.com/communities/c</a>.</p><p><a class="ulink" href="libcouchbase.3lib.html" target="_top">libcouchbase(3lib)</a>, <a class="ulink" href="lcb_connect.3couchbase.html" target="_top">lcb_connect(3couchbase)</a>, <a class="ulink" href="lcb_destroy.3couchbase.html" target="_top">lcb_destroy(3couchbase)</a>,
+<a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a></p></div></div></body></html>

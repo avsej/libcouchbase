@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>lcb_cntl</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp251744"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>lcb_cntl — Tune libcouchbase internals</p></div><div class="refsynopsisdiv"><a id="_synopsis"></a><h2>Synopsis</h2><pre class="literallayout">cc [ flag ... ] file... -lcouchbase [ library ... ]</pre><pre class="literallayout">#include &lt;libcouchbase/couchbase.h&gt;
+lcb_error_t lcb_cntl(int mode, lcb_t instance, int cmd, void *arg);</pre></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>This function exposes an ioctl/fcntl-like interface to read and write
+various configuration properties to and from an lcb_t handle.</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>instance</strong></span>
+</span></dt><dd>
+    The instance to modify
+</dd><dt><span class="term">
+<span class="strong"><strong>mode</strong></span>
+</span></dt><dd>
+    One of LCB_CNTL_GET (to retrieve a setting) or LCB_CNTL_SET (to
+    modify a setting). Note that not all configuration properties
+    support SET.
+</dd><dt><span class="term">
+<span class="strong"><strong>cmd</strong></span>
+</span></dt><dd><p class="simpara">
+    The specific command/property to modify. This is one of the
+    LCB_CNTL_* constants defined in this file. Note that it is safe
+    (and even recommanded) to use the raw numeric value (i.e. to be
+    backwards and forwards compatible with libcouchbase versions), as
+    they are not subject to change.
+</p><p class="simpara">Using the actual value may be useful in ensuring your application
+will still compile with an older libcouchbase version (though
+you may get a runtime error (see return) if the command is not
+supported</p></dd><dt><span class="term">
+<span class="strong"><strong>arg</strong></span>
+</span></dt><dd>
+    The argument passed to the configuration handler. The actual type
+    of this pointer is dependent on the command in question.
+    Typically for GET operations, the value of <span class="emphasis"><em>arg</em></span> is set to the
+    current configuration value; and for SET operations, the current
+    configuration is updated with the contents of *arg.
+</dd></dl></div><div class="refsect2"><a id="_available_commands"></a><h3>Available Commands</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_OP_TIMEOUT</strong></span> <span class="emphasis"><em>(lcb_uint32_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Set or get operation timeout in microseconds. Default is 2500000
+    (2.5 seconds).
+</p><pre class="literallayout">lcb_uint32_t tmo = 3500000;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_OP_TIMEOUT, &amp;tmo);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_VIEW_TIMEOUT</strong></span> <span class="emphasis"><em>(lcb_uint32_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Set or get view (map/reduce) timeout in microseconds. Default is
+    75000000 (75 seconds).
+</p><pre class="literallayout">lcb_uint32_t tmo = 30000000;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_VIEW_TIMEOUT, &amp;tmo);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_RBUFSIZE</strong></span> <span class="emphasis"><em>(lcb_size_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Set or get default read buffer size (this is not a socket option).
+    Default is 32768 bytes.
+</p><pre class="literallayout">lcb_size_t sz = 8192;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_RBUFSIZE, &amp;sz);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_WBUFSIZE</strong></span> <span class="emphasis"><em>(lcb_size_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Set or get default write buffer size (this is not a socket option).
+    Default is 32768 bytes.
+</p><pre class="literallayout">lcb_size_t sz = 8192;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_WBUFSIZE, &amp;sz);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_HANDLETYPE</strong></span> <span class="emphasis"><em>(lcb_type_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get the handle type.
+</p><pre class="literallayout">lcb_type_t type;
+lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_HANDLETYPE, &amp;type);
+switch (type) {
+    case LCB_TYPE_BUCKET:
+        printf("handle connected to bucket\n");
+        break;
+    case LCB_TYPE_CLUSTER:
+        printf("handle connected to cluster\n");
+        break;
+}</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_VBCONFIG</strong></span> <span class="emphasis"><em>(VBUCKET_CONFIG_HANDLE*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get the handle of the cluster configuration
+</p><pre class="literallayout">#include &lt;libvbucket/vbucket.h&gt;</pre><pre class="literallayout">VUCKET_CONFIG_HANDLE conf;
+const char *password;</pre><pre class="literallayout">lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_VBCONFIG, &amp;conf);
+password = vbucket_config_get_password(conf);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_IOPS</strong></span> <span class="emphasis"><em>(lcb_io_opt_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get the implementation of IO stucture (the plugin gist)
+</p><pre class="literallayout">lcb_io_opt_t io;
+lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_IOPS, &amp;io);
+printf("IO plugin version %d\n", io-&gt;version);
+if (io-&gt;version == 0) {
+    io-&gt;v.v0.run_event_loop(io);
+}</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_VBMAP</strong></span> <span class="emphasis"><em>(lcb_cntl_vbinfo_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get the vBucket ID for a given key, based on the current configuration
+    The <span class="emphasis"><em>vbucket</em></span> field in he structure will be modified.
+</p><p class="simpara">Structure layout:</p><pre class="literallayout">typedef struct lcb_cntl_vbinfo_st lcb_cntl_vbinfo_t;
+struct lcb_cntl_vbinfo_st {
+    int version;
+    union {
+        struct {
+            /** Input parameters */
+            const void *key;
+            lcb_size_t nkey;
+            /** Output */
+            int vbucket;
+            int server_index;
+        } v0;
+    } v;
+};</pre><p class="simpara">Example:</p><pre class="literallayout">char key[] = "foo";
+lcb_cntl_vbinfo_t info;</pre><pre class="literallayout">info.version = 0;
+info.v.v0.key = key;
+info.v.v0.nkey = strlen(key);</pre><pre class="literallayout">lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_VBMAP, &amp;info);
+printf("vBucket ID of \"%s\" is %d\n", key, info.v.v0.vbucket);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_MEMDNODE_INFO</strong></span> <span class="emphasis"><em>lcb_cntl_server_t*</em></span>
+</span></dt><dd><p class="simpara">
+    Get information about a memcached node. Note that all fields in
+    this structure are ready only and are only valid until one of the
+    following happens:
+</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+Another libcouchbase API function is called
+</li><li class="listitem">
+The IOPS loop regains control
+</li></ol></div><p class="simpara">Structure layout:</p><pre class="literallayout">typedef struct lcb_cntl_server_st lcb_cntl_server_t;
+struct lcb_cntl_server_st {
+    int version;
+    union {
+        struct {
+            /** Server index to query */
+            int index;
+            /** NUL-terminated string containing the address */
+            const char *host;
+            /** NUL-terminated string containing the port */
+            const char *port;
+            /** Whether the node is connected */
+            int connected;
+            /**
+             * Socket information. If a v0 IO plugin is being
+             * used, the sockfd is set to the socket
+             * descriptor. If a v1 plugin is being used, the
+             * sockptr is set to point to the appropriate
+             * structure.
+             *
+             * Note that you *MAY* perform various
+             * 'setsockopt' calls on the sockfd (though it is
+             * your responsibility to ensure those options are
+             * valid); however the actual socket descriptor
+             * may change in the case of a cluster
+             * configuration update.
+             */
+            union {
+                lcb_socket_t sockfd;
+                lcb_sockdata_t *sockptr;
+            } sock;
+        } v0;
+    } v;
+};</pre><p class="simpara">Example:</p><pre class="literallayout">lcb_cntl_server_t node;</pre><pre class="literallayout">node.version = 0;
+node.v.v0.index = 0; /* first node */</pre><pre class="literallayout">lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_MEMDNODE_INFO, &amp;node);
+printf("node \"%s:%s\" is %s\n", node.v.v0.host, node.v.v0.port,
+       node.v.v0.connected ? "connected" : "is not connected");</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_CONFIGNODE_INFO</strong></span> <span class="emphasis"><em>(lcb_io_opt_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get information about the configuration node. Semantics of
+    LCB_CNTL_MEMDNODE_INFO apply here as well, but v.v0.index field is
+    ignored, obviously.
+</p><pre class="literallayout">lcb_cntl_server_t node;</pre><pre class="literallayout">node.version = 0;</pre><pre class="literallayout">lcb_cntl(instance, LCB_CNTL_GET, LCB_CNTL_CONFIGNODE_INFO, &amp;node);
+printf("listening configuration from \"%s:%s\"\n",
+       node.v.v0.host, node.v.v0.port);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_SYNCMODE</strong></span> <span class="emphasis"><em>(lcb_syncmode_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Set or get "synchmode" behaviour. The following synchronous models
+    are defined (default LCB_ASYNCHRONOUS):
+</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>LCB_ASYNCHRONOUS</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>This is the default and all calls to libcouchbase are non-blocking
+(except for lcb_wait().</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>LCB_SYNCHRONOUS</p></td><td style="" align="left" valign="top"><p>In synchronous mode the function will block until either the operation
+is complete, or a hard error occurs. Operating in synchronous mode is
+the same as calling lcb_wait() after each function call.</p></td></tr></tbody></table></div><pre class="literallayout">lcb_syncmode_t mode = LCB_SYNCHRONOUS;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_SYNCMODE, &amp;mode);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_IP6POLICY</strong></span> <span class="emphasis"><em>(lcb_ipv6_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get or set IPv4/IPv6 selection policy. The following settings for
+    IPv6 is defined (default LCB_IPV6_DISABLED):
+</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>LCB_IPV6_DISABLED</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Disable all use of IPv6.</p></td></tr><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>LCB_IPV6_ONLY</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Disable all use of IPv4, and only connect to IPv6 hosts</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>LCB_IPV6_ALLOW</p></td><td style="" align="left" valign="top"><p>Allow a mix of IPv4 and IPv6.</p></td></tr></tbody></table></div><pre class="literallayout">lcb_ipv6_t mode = LCB_IPV6_ALLOW;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_IP6POLICY, &amp;mode);</pre></dd><dt><span class="term">
+<span class="strong"><strong>LCB_CNTL_CONFERRTHRESH</strong></span> <span class="emphasis"><em>(lcb_size_t*)</em></span>
+</span></dt><dd><p class="simpara">
+    Get or set the configuration error threshold. This number
+    indicates how many network/mapping/not-my-vbucket errors are
+    received before a configuration update is requested again (default
+    100).
+</p><pre class="literallayout">lcb_size_t num_events = 10;
+lcb_cntl(instance, LCB_CNTL_SET, LCB_CNTL_CONFERRTHRESH, &amp;num_events);</pre></dd></dl></div></div></div><div class="refsect1"><a id="_return_value"></a><h2>RETURN VALUE</h2><p>LCB_NOT_SUPPORTED if the code is unrecognized LCB_EINVAL if there was
+a problem with the argument (typically for SET) other error codes
+depending on the command.</p></div><div class="refsect1"><a id="_attributes"></a><h2>ATTRIBUTES</h2><p>See <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a> for descriptions of the following attributes:</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><thead><tr><th style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE TYPE      </th><th style="border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE VALUE</th></tr></thead><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Interface Stability</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Committed</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>MT-Level</p></td><td style="" align="left" valign="top"><p>MT-Safe</p></td></tr></tbody></table></div></div><div class="refsect1"><a id="_see_also"></a><h2>SEE ALSO</h2><p>Copyright 2010-2013 Couchbase, Inc.</p><p>Learn more at <a class="ulink" href="http://www.couchbase.com/communities/c" target="_top">http://www.couchbase.com/communities/c</a>.</p><p><a class="ulink" href="libcouchbase.3lib.html" target="_top">libcouchbase(3lib)</a>, <a class="ulink" href="lcb_create.3couchbase.html" target="_top">lcb_create(3couchbase)</a>, <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a></p></div></div></body></html>

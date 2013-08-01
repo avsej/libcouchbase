@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>cbcrc</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp160576"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cbcrc — cbc resource file</p></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>cbcrc is an ASCII file that allows you to specify default
+configuration values for cbc.</p><p>Each entry in the cbcrc file is a line with a key-value pair in the
+following form:</p><pre class="literallayout">key="value"</pre><p>The keys may be specified in random order, and if you specify the same
+key multiple times the last value "wins". The following keys exists:</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+<span class="strong"><strong>uri</strong></span>
+</span></dt><dd>
+    This is a list separated by semicolon of hostnames (with an
+    optional port) to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>user</strong></span>
+</span></dt><dd>
+    This is the username used during authentication to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>password</strong></span>
+</span></dt><dd>
+    This is the password used during authentication to your cluster.
+</dd><dt><span class="term">
+<span class="strong"><strong>bucket</strong></span>
+</span></dt><dd>
+    This is the name of the bucket you would like to use.
+</dd><dt><span class="term">
+<span class="strong"><strong>timeout</strong></span>
+</span></dt><dd>
+    The timeout value to use for the operations.
+</dd></dl></div></div><div class="refsect1"><a id="_examples"></a><h2>EXAMPLES</h2><p>Example 1: A Sample <sub>/.cbcrc File. Here is a sample </sub>/.cbcrc file that
+specifies all of the allowed parameters:</p><pre class="literallayout">uri = server1;server2;server3
+user = blogapp
+password = secret
+bucket = blogapp
+timeout = 100000</pre></div><div class="refsect1"><a id="_attributes"></a><h2>ATTRIBUTES</h2><p>See <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a> for descriptions of the following attributes:</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><thead><tr><th style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE TYPE      </th><th style="border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE VALUE</th></tr></thead><tbody><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>Interface Stability</p></td><td style="" align="left" valign="top"><p>Evolving</p></td></tr></tbody></table></div></div><div class="refsect1"><a id="_see_also"></a><h2>SEE ALSO</h2><p>Copyright 2010-2013 Couchbase, Inc.</p><p>Learn more at <a class="ulink" href="http://www.couchbase.com/communities/c" target="_top">http://www.couchbase.com/communities/c</a>.</p><p><a class="ulink" href="cbc.1.html" target="_top">cbc(1)</a>, <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a></p></div></div></body></html>

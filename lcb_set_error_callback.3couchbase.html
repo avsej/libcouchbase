@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>lcb_set_error_callback</title><link rel="stylesheet" type="text/css" href="docbook-xsl.css" /><meta name="generator" content="DocBook XSL Stylesheets V1.78.1" /></head><body><div xml:lang="en" class="refentry" lang="en"><a id="idp96592"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>lcb_set_error_callback — Set callback for error</p></div><div class="refsynopsisdiv"><a id="_synopsis"></a><h2>Synopsis</h2><p>cc [ flag … ] file… -lcouchbase [ library … ]</p><pre class="literallayout">#include &lt;libcouchbase/couchbase.h&gt;</pre><pre class="literallayout">lcb_error_callback lcb_set_error_callback(lcb_t instance, lcb_error_callback callback);</pre></div><div class="refsect1"><a id="_description"></a><h2>DESCRIPTION</h2><p>lcb_set_error_callback() is used to set a new callback function to
+handle error situations a given libcouchbase instance.</p><p>Please note that the command callbacks will be called for each command
+specified, and the error callback is called for errors without a
+command context. The error callback function has the following
+prototype:</p><pre class="literallayout">void function(lcb_t instance,
+              lcb_error_t error,
+              const char * errinfo);</pre><p>instance is the libcouchbase instance with the error, error is the
+error code and errinfo contains a more information (if non-null).</p></div><div class="refsect1"><a id="_return_values"></a><h2>RETURN VALUES</h2><p>lcb_set_error_callback() returns the previous callback function.</p></div><div class="refsect1"><a id="_examples"></a><h2>EXAMPLES</h2><p>Example 1: Query the current callback</p><pre class="literallayout">#include &lt;libcouchbase/couchbase.h&gt;</pre><pre class="literallayout">...
+lcb_t instance;
+...
+lcb_error_callback old;
+old = lcb_set_error_callback(instance, NULL);
+...</pre><p>Example 2: Install custom callback</p><pre class="literallayout">#include &lt;libcouchbase/couchbase.h&gt;</pre><pre class="literallayout">...
+static void callback(lcb_t instance, lcb_error_t error,
+                     const char *errinfo)
+{
+   fprintf(stderr, "Received error: %s\n",
+                    lcb_strerror(instance, error));
+   if (errinfo) {
+      fprintf(stderr, "   (%s)\n", errinfo);
+   }
+   ... handle error ...</pre><pre class="literallayout">}</pre><pre class="literallayout">...
+lcb_t instance;
+...
+lcb_set_error_callback(instance, callback);
+...</pre></div><div class="refsect1"><a id="_attributes"></a><h2>ATTRIBUTES</h2><p>See <a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a> for descriptions of the following attributes:</p><div class="informaltable"><table cellpadding="4px" style="border-collapse: collapse;border-top: 3px solid #527bbd; border-bottom: 3px solid #527bbd; border-left: 3px solid #527bbd; border-right: 3px solid #527bbd; "><colgroup><col class="col_1" /><col class="col_2" /></colgroup><thead><tr><th style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE TYPE      </th><th style="border-bottom: 1px solid #527bbd; " align="left" valign="top"> ATTRIBUTE VALUE</th></tr></thead><tbody><tr><td style="border-right: 1px solid #527bbd; border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Interface Stability</p></td><td style="border-bottom: 1px solid #527bbd; " align="left" valign="top"><p>Committed</p></td></tr><tr><td style="border-right: 1px solid #527bbd; " align="left" valign="top"><p>MT-Level</p></td><td style="" align="left" valign="top"><p>MT-Safe</p></td></tr></tbody></table></div></div><div class="refsect1"><a id="_see_also"></a><h2>SEE ALSO</h2><p>Copyright 2010-2013 Couchbase, Inc.</p><p>Learn more at <a class="ulink" href="http://www.couchbase.com/communities/c" target="_top">http://www.couchbase.com/communities/c</a>.</p><p><a class="ulink" href="libcouchbase.3lib.html" target="_top">libcouchbase(3lib)</a>, <a class="ulink" href="lcb_error.3couchbase.html" target="_top">lcb_error(3couchbase)</a>, <a class="ulink" href="lcb_strerror.3couchbase.html" target="_top">lcb_strerror(3couchbase)</a>,
+<a class="ulink" href="lcb_attributes.5.html" target="_top">lcb_attributes(5)</a></p></div></div></body></html>
