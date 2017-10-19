@@ -25,6 +25,11 @@
 
   Migration path: only arguments/fields in operation and bootstrap callbacks should be used.
 
+* [CCBC-463](https://issues.couchbase.com/browse/CCBC-463): Removed syncmode. This simplifies internals of the library,
+  Synchronous mode was never implemented for REST server APIs, or for new subdocument features, and was deprecated.
+
+  Migration path: use `lcb_wait()` and `lcb_wait3()` to implement synchronous interaction.
+
 ## 2.9.5 (September 21 2018)
 
 * [CCBC-980](https://issues.couchbase.com/browse/CCBC-980): Make idle timeout
