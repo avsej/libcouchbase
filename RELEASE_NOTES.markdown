@@ -19,6 +19,12 @@
 
   Migration path: the application should use `lcb_bootstrap_callback` instead.
 
+* [CCBC-466](https://issues.couchbase.com/browse/CCBC-466): Removed `lcb_get_last_error`. This function is deprecated
+  and its use can result in false positives, true negatives. Most internals do not set `last_error`, and because there
+  may be multiple things going on within the library, getting the last error does not make sense.
+
+  Migration path: only arguments/fields in operation and bootstrap callbacks should be used.
+
 ## 2.9.5 (September 21 2018)
 
 * [CCBC-980](https://issues.couchbase.com/browse/CCBC-980): Make idle timeout
