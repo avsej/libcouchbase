@@ -51,6 +51,10 @@
   Migration path: Remove all usages of timer API function and structures. If they are necessary, consider using
   external IO loop, and use its timers API (see `lcb_create_io_ops()`).
 
+* [CCBC-864](https://issues.couchbase.com/browse/CCBC-864): Removed `lcb_flush_buffers`. This function does nothing.
+
+  Migration path: Remove all usages of this function.
+
 ## 2.9.5 (September 21 2018)
 
 * [CCBC-980](https://issues.couchbase.com/browse/CCBC-980): Make idle timeout
