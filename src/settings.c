@@ -64,6 +64,7 @@ void lcb_default_settings(lcb_settings *settings)
     settings->config_poll_interval = LCB_DEFAULT_CONFIG_POLL_INTERVAL;
     settings->use_errmap = 1;
     settings->use_collections = 0;
+    settings->default_collection_id = 0;
     settings->log_redaction = 0;
     settings->use_tracing = 1;
     settings->network = NULL;

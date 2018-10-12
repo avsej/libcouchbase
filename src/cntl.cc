@@ -623,6 +623,9 @@ HANDLER(metrics_handler) {
 HANDLER(collections_handler) {
     RETURN_GET_SET(int, LCBT_SETTING(instance, use_collections));
 }
+HANDLER(default_cid_handler) {
+    RETURN_GET_SET(lcb_U32, LCBT_SETTING(instance, default_collection_id));
+}
 
 HANDLER(comp_min_size_handler) {
     if (mode == LCB_CNTL_SET && *reinterpret_cast<lcb_U32*>(arg) < LCB_DEFAULT_COMPRESS_MIN_SIZE) {
@@ -731,7 +734,7 @@ static ctl_handler handlers[] = {
     send_hello_handler,                   /* LCB_CNTL_SEND_HELLO */
     buckettype_handler,                   /* LCB_CNTL_BUCKETTYPE */
     metrics_handler,                      /* LCB_CNTL_METRICS */
-    collections_handler,                  /* LCB_CNTL_USE_COLLECTIONS */
+    collections_handler,                  /* LCB_CNTL_ENABLE_COLLECTIONS */
     ssl_keypath_handler,                  /* LCB_CNTL_SSL_KEY */
     log_redaction_handler,                /* LCB_CNTL_LOG_REDACTION */
     ssl_truststorepath_handler,           /* LCB_CNTL_SSL_TRUSTSTORE */
@@ -750,7 +753,8 @@ static ctl_handler handlers[] = {
     vb_noremap_handler,                   /* LCB_CNTL_VB_NOREMAP */
     network_handler,                      /* LCB_CNTL_NETWORK */
     wait_for_config_handler,              /* LCB_CNTL_WAIT_FOR_CONFIG */
-    http_pooltmo_handler                  /* LCB_CNTL_HTTP_POOL_TIMEOUT */
+    http_pooltmo_handler,                 /* LCB_CNTL_HTTP_POOL_TIMEOUT */
+    default_cid_handler                   /* LCB_CNTL_DEFAULT_COLLECTION_ID */
 };
 
 /* Union used for conversion to/from string functions */
@@ -943,6 +947,8 @@ static cntl_OPCODESTRS stropcode_map[] = {
     {"network", LCB_CNTL_NETWORK, convert_passthru},
     {"wait_for_config", LCB_CNTL_WAIT_FOR_CONFIG, convert_intbool},
     {"http_pool_timeout", LCB_CNTL_HTTP_POOL_TIMEOUT, convert_timevalue},
+    {"enable_collections", LCB_CNTL_ENABLE_COLLECTIONS, convert_intbool},
+    {"default_collection_id", LCB_CNTL_DEFAULT_COLLECTION_ID, convert_u32},
     {NULL, -1}};
 
 #define CNTL_NUM_HANDLERS (sizeof(handlers) / sizeof(handlers[0]))

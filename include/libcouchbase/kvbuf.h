@@ -75,6 +75,7 @@ typedef struct lcb_KEYBUF {
      */
     lcb_KVBUFTYPE type;
     lcb_CONTIGBUF contig;
+    uint32_t cid; /**< collection id */
 } lcb_KEYBUF;
 
 /**@private*/

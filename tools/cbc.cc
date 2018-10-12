@@ -15,6 +15,7 @@
 #include "common/histogram.h"
 #include "cbc-handlers.h"
 #include "connspec.h"
+#include "rnd.h"
 #include "contrib/lcb-jsoncpp/lcb-jsoncpp.h"
 
 #ifndef LCB_NO_SSL
@@ -465,6 +466,7 @@ GetHandler::addOptions()
         parser.addOption(o_replica);
     }
     parser.addOption(o_exptime);
+    parser.addOption(o_collection_uid);
 }
 
 void
@@ -483,6 +485,9 @@ GetHandler::run()
             lcb_CMDGETREPLICA cmd = { 0 };
             const string& key = keys[ii];
             LCB_KREQ_SIMPLE(&cmd.key, key.c_str(), key.size());
+	    if (o_collection_uid.passed()) {
+	      cmd.key.cid = o_collection_uid.result();
+	    }
             if (replica_mode == "first") {
                 cmd.strategy = LCB_REPLICA_FIRST;
             } else if (replica_mode == "all") {
@@ -496,6 +501,9 @@ GetHandler::run()
             lcb_CMDGET cmd = { 0 };
             const string& key = keys[ii];
             LCB_KREQ_SIMPLE(&cmd.key, key.c_str(), key.size());
+	    if (o_collection_uid.passed()) {
+	      cmd.key.cid = o_collection_uid.result();
+	    }
             if (o_exptime.passed()) {
                 cmd.exptime = o_exptime.result();
             }
@@ -555,6 +563,7 @@ SetHandler::addOptions()
         parser.addOption(o_value);
     }
     parser.addOption(o_json);
+    parser.addOption(o_collection_uid);
 }
 
 lcb_storage_t
@@ -588,6 +597,9 @@ SetHandler::storeItem(const string& key, const char *value, size_t nvalue)
     lcb_error_t err;
     lcb_CMDSTOREDUR cmd = { 0 };
     LCB_CMD_SET_KEY(&cmd, key.c_str(), key.size());
+    if (o_collection_uid.passed()) {
+        cmd.key.cid = o_collection_uid.result();
+    }
     cmd.value.vtype = LCB_KV_COPY;
     cmd.value.u_buf.contig.bytes = value;
     cmd.value.u_buf.contig.nbytes = nvalue;
@@ -1053,6 +1065,304 @@ McVersionHandler::run()
     lcb_error_t err;
     lcb_sched_enter(instance);
     err = lcb_server_versions3(instance, NULL, &cmd);
+    if (err != LCB_SUCCESS) {
+        throw LcbError(err);
+    }
+    lcb_sched_leave(instance);
+    lcb_wait(instance);
+}
+
+static void collection_dump_manifest_callback(lcb_t, int, const lcb_RESPC9SMGMT *resp)
+{
+    if (resp->rc != LCB_SUCCESS) {
+        fprintf(stderr, "Failed to get collection manifest: %s\n", lcb_strerror_short(resp->rc));
+    } else {
+        fwrite(resp->value, 1, resp->nvalue, stdout);
+        fflush(stdout);
+        fprintf(stderr, "\n");
+    }
+}
+
+void CollectionGetManifestHandler::run()
+{
+    Handler::run();
+
+    lcb_install_callback3(instance, LCB_CALLBACK_COLLECTIONS_GET_MANIFEST,
+                          (lcb_RESPCALLBACK)collection_dump_manifest_callback);
+
+    lcb_CMDC9SMGMT cmd = {0};
+    lcb_error_t err;
+
+    lcb_sched_enter(instance);
+    err = lcb_c9s_manifest_get(instance, NULL, &cmd);
+    if (err != LCB_SUCCESS) {
+        throw LcbError(err);
+    }
+    lcb_sched_leave(instance);
+    lcb_wait(instance);
+}
+
+static void collection_set_manifest_callback(lcb_t, int, const lcb_RESPC9SMGMT *resp)
+{
+    if (resp->rc != LCB_SUCCESS) {
+        fprintf(stderr, "Failed to set collection manifest: %s\n", lcb_strerror_short(resp->rc));
+    } else {
+        fprintf(stderr, "Collection manifest has been set successfully\n");
+    }
+}
+
+void CollectionSetManifestHandler::run()
+{
+    Handler::run();
+
+    std::stringstream ss;
+
+    FILE *input = stdin;
+    if (o_path.passed() && o_path.result() != "-") {
+        std::string path = o_path.result();
+        input = fopen(path.c_str(), "rb");
+        if (input == NULL) {
+            perror(path.c_str());
+            exit(EXIT_FAILURE);
+        }
+    }
+    char tmpbuf[4096];
+    ssize_t nr;
+    while ((nr = fread(tmpbuf, 1, sizeof tmpbuf, input))) {
+        ss.write(tmpbuf, nr);
+    }
+    if (input != stdin) {
+        fclose(input);
+    }
+
+    lcb_install_callback3(instance, LCB_CALLBACK_COLLECTIONS_SET_MANIFEST,
+                          (lcb_RESPCALLBACK)collection_set_manifest_callback);
+
+    lcb_CMDC9SMGMT cmd = {0};
+    lcb_error_t err;
+    std::string value = ss.str();
+
+    cmd.value.vtype = LCB_KV_CONTIG;
+    cmd.value.u_buf.contig.bytes = value.c_str();
+    cmd.value.u_buf.contig.nbytes = value.size();
+
+    lcb_sched_enter(instance);
+    err = lcb_c9s_manifest_set(instance, NULL, &cmd);
+    if (err != LCB_SUCCESS) {
+        throw LcbError(err);
+    }
+    lcb_sched_leave(instance);
+    lcb_wait(instance);
+}
+
+static void collection_add_callback(lcb_t, int, const lcb_RESPC9SMGMT *resp)
+{
+    if (resp->rc != LCB_SUCCESS) {
+        fprintf(stderr, "Failed to add collection: %s\n", lcb_strerror_short(resp->rc));
+    } else {
+        fprintf(stderr, "Collection has been added successfully\n");
+    }
+}
+
+class Manifest
+{
+    class Collection
+    {
+      public:
+        uint32_t uid;
+        std::string name;
+
+        Collection(std::string name_, uint32_t uid_)
+        {
+            this->name = name_;
+            this->uid = uid_;
+        }
+    };
+
+    class Scope
+    {
+      public:
+        uint32_t uid;
+        std::string name;
+        std::vector< Collection > collections;
+
+        Scope(std::string name_, uint32_t uid_)
+        {
+            this->name = name_;
+            this->uid = uid_;
+        }
+
+        void addCollection(std::string collectionName, uint32_t collectionUid)
+        {
+            Collection collection(collectionName, collectionUid);
+            collections.push_back(collection);
+        }
+    };
+
+  public:
+    Manifest() : uid(2), nextUid(3), ref(NULL) {}
+
+    ~Manifest()
+    {
+        resetReference();
+    }
+
+    void addCollection(std::string scopeName, std::string collectionName)
+    {
+        Scope &scope = findOrCreateScope(scopeName);
+        scope.addCollection(collectionName, nextUid++);
+    }
+
+    void initDefault()
+    {
+        createScope("default", 0);
+    }
+
+    void load(lcb_C9SMANIFEST *manifest)
+    {
+        this->uid = manifest->uid;
+        this->scopes.clear();
+        for (size_t ii = 0; ii < manifest->nscopes; ii++) {
+            lcb_C9SSCOPE &s = manifest->scopes[ii];
+            Scope &scope = createScope(std::string(s.name, s.nname), s.uid);
+            if (nextUid <= s.uid) {
+                nextUid = s.uid + 1;
+            }
+            for (size_t jj = 0; jj < s.ncollections; jj++) {
+                lcb_C9SCOLLECTION &c = s.collections[jj];
+                scope.addCollection(std::string(c.name, c.nname), c.uid);
+		if (nextUid <= c.uid) {
+                    nextUid = c.uid + 1;
+                }
+            }
+        }
+    }
+
+    lcb_C9SMANIFEST *param()
+    {
+        if (ref) {
+            resetReference();
+        }
+        ref = (lcb_C9SMANIFEST *)calloc(sizeof(lcb_C9SMANIFEST), 1);
+        ref->uid = uid;
+        ref->nscopes = scopes.size();
+        if (ref->nscopes > 0) {
+            ref->scopes = (lcb_C9SSCOPE *)calloc(sizeof(lcb_C9SSCOPE), ref->nscopes);
+            for (size_t ii = 0; ii < ref->nscopes; ii++) {
+                lcb_C9SSCOPE &s = ref->scopes[ii];
+                s.uid = scopes[ii].uid;
+                s.nname = scopes[ii].name.size();
+                s.name = strndup(scopes[ii].name.c_str(), s.nname);
+                s.ncollections = scopes[ii].collections.size();
+                if (s.ncollections > 0) {
+                    s.collections = (lcb_C9SCOLLECTION *)calloc(sizeof(lcb_C9SCOLLECTION), s.ncollections);
+                    for (size_t jj = 0; jj < s.ncollections; jj++) {
+                        lcb_C9SCOLLECTION &c = s.collections[jj];
+                        c.uid = scopes[ii].collections[jj].uid;
+                        c.nname = scopes[ii].collections[jj].name.size();
+                        c.name = strndup(scopes[ii].collections[jj].name.c_str(), c.nname);
+                    }
+                }
+            }
+        }
+        return ref;
+    }
+
+    uint32_t uid;
+    uint32_t nextUid;
+    std::vector< Scope > scopes;
+
+  private:
+    lcb_C9SMANIFEST *ref;
+
+    void resetReference()
+    {
+        if (ref != NULL) {
+            for (size_t ii; ii < ref->nscopes; ii++) {
+                for (size_t jj; jj < ref->scopes[ii].ncollections; jj++) {
+                    free((void *)ref->scopes[ii].collections[jj].name);
+                }
+                free((void *)ref->scopes[ii].name);
+                free((void *)ref->scopes[ii].collections);
+            }
+            free((void *)ref->scopes);
+            free((void *)ref);
+        }
+        ref = NULL;
+    }
+
+    Scope &createScope(std::string scopeName, uint32_t scopeUid)
+    {
+        Scope scope(scopeName, scopeUid);
+        scopes.push_back(scope);
+        return scopes.back();
+    }
+
+    Scope &createScope(std::string scopeName)
+    {
+        return createScope(scopeName, nextUid++);
+    }
+
+    Scope &findOrCreateScope(std::string scopeName, uint32_t scopeUid)
+    {
+        for (std::vector< Scope >::iterator s = scopes.begin(); s != scopes.end(); ++s) {
+            if (s->name == scopeName) {
+                return *s;
+            }
+        }
+        return createScope(scopeName, scopeUid);
+    }
+    Scope &findOrCreateScope(std::string scopeName)
+    {
+        return findOrCreateScope(scopeName, nextUid++);
+    }
+};
+
+static void collection_get_current_manifest_callback(lcb_t instance, int, const lcb_RESPC9SMGMT *resp)
+{
+    if (resp->rc != LCB_SUCCESS && resp->rc != LCB_COLLECTION_NO_MANIFEST) {
+        fprintf(stderr, "Failed to retrieve current collection manifest: %s\n", lcb_strerror_short(resp->rc));
+    } else {
+        CollectionAddHandler *handler = static_cast< CollectionAddHandler * >(resp->cookie);
+        lcb_install_callback3(instance, LCB_CALLBACK_COLLECTIONS_SET_MANIFEST,
+                              (lcb_RESPCALLBACK)collection_add_callback);
+        Manifest manifest;
+        if (resp->manifest == NULL) {
+	    manifest.initDefault();
+            manifest.addCollection(handler->scopeName(), handler->collectionName());
+        } else {
+            manifest.load(resp->manifest);
+            manifest.addCollection(handler->scopeName(), handler->collectionName());
+	    manifest.uid += 1;
+        }
+
+        lcb_error_t err;
+        lcb_CMDC9SMGMT cmd = {0};
+        cmd.manifest = manifest.param();
+
+        lcb_sched_enter(instance);
+        err = lcb_c9s_manifest_set(instance, resp->cookie, &cmd);
+        if (err != LCB_SUCCESS) {
+	    lcb_sched_fail(instance);
+            throw LcbError(err);
+        }
+        lcb_sched_leave(instance);
+    }
+}
+
+void CollectionAddHandler::run()
+{
+    Handler::run();
+
+    lcb_install_callback3(instance, LCB_CALLBACK_COLLECTIONS_GET_MANIFEST,
+                          (lcb_RESPCALLBACK)collection_get_current_manifest_callback);
+
+    lcb_error_t err;
+    lcb_CMDC9SMGMT cmd = {0};
+
+    lcb_sched_enter(instance);
+
+    err = lcb_c9s_manifest_get(instance, static_cast< void * >(this), &cmd);
     if (err != LCB_SUCCESS) {
         throw LcbError(err);
     }
@@ -1685,7 +1995,6 @@ static const char* optionsOrder[] = {
         "cp",
         "rm",
         "stats",
-        // "verify,
         "version",
         "verbosity",
         "view",
@@ -1703,6 +2012,8 @@ static const char* optionsOrder[] = {
         "strerror",
         "ping",
         "watch",
+        "collection-add",
+        "collection-get-manifest",
         NULL
 };
 
@@ -1717,7 +2028,7 @@ protected:
         for (const char ** cur = optionsOrder; *cur; cur++) {
             const Handler *handler = handlers[*cur];
             fprintf(stderr, "   %-20s", *cur);
-            fprintf(stderr, "%s\n", handler->description());
+            fprintf(stderr, " %s\n", handler->description());
         }
     }
 };
@@ -1793,6 +2104,9 @@ setupHandlers()
     handlers_s["user-upsert"] = new UserUpsertHandler();
     handlers_s["user-delete"] = new UserDeleteHandler();
     handlers_s["mcversion"] = new McVersionHandler();
+    handlers_s["collection-add"] = new CollectionAddHandler();
+    handlers_s["collection-get-manifest"] = new CollectionGetManifestHandler();
+    handlers_s["collection-set-manifest"] = new CollectionSetManifestHandler();
 
     map<string,Handler*>::iterator ii;
     for (ii = handlers_s.begin(); ii != handlers_s.end(); ++ii) {

@@ -31,7 +31,9 @@ protected:
 class GetHandler : public Handler {
 public:
     GetHandler(const char *name = "get") :
-        Handler(name), o_replica("replica"), o_exptime("expiry") {}
+        Handler(name), o_replica("replica"), o_exptime("expiry"), o_collection_uid("collection-uid") {
+	  o_collection_uid.description("UID of collection");
+	}
 
     const char* description() const {
         if (isLock()) {
@@ -48,6 +50,7 @@ protected:
 private:
     cliopts::StringOption o_replica;
     cliopts::UIntOption o_exptime;
+    cliopts::UIntOption o_collection_uid;
     bool isLock() const { return cmdname == "lock"; }
 };
 
@@ -70,7 +73,7 @@ public:
     SetHandler(const char *name = "create") : Handler(name),
         o_flags("flags"), o_exp("expiry"), o_add("add"), o_persist("persist-to"),
         o_replicate("replicate-to"), o_value("value"), o_json("json"),
-        o_mode("mode") {
+        o_mode("mode"), o_collection_uid("collection-uid") {
 
         o_flags.abbrev('f').description("Flags for item");
         o_exp.abbrev('e').description("Expiry for item");
@@ -82,6 +85,7 @@ public:
         o_mode.abbrev('M').description("Mode to use when storing");
         o_mode.argdesc("upsert|insert|replace");
         o_mode.setDefault("upsert");
+        o_collection_uid.description("UID of collection");
     }
 
     const char* description() const {
@@ -119,6 +123,7 @@ private:
     cliopts::StringOption o_value;
     cliopts::BoolOption o_json;
     cliopts::StringOption o_mode;
+    cliopts::UIntOption o_collection_uid;
     std::map<std::string, lcb_cas_t> items;
 };
 
@@ -632,5 +637,72 @@ protected:
     void run();
 };
 
+class CollectionGetManifestHandler : public Handler
+{
+  public:
+    HANDLER_DESCRIPTION("Get collection manifest")
+    HANDLER_USAGE("[OPTIONS ...]")
+    CollectionGetManifestHandler() : Handler("collection-get-manifest") {}
+
+  protected:
+    void run();
+};
+
+class CollectionAddHandler : public Handler
+{
+  public:
+    HANDLER_DESCRIPTION("Add new collection to the manifest")
+    HANDLER_USAGE("[OPTIONS ...]")
+    CollectionAddHandler() : Handler("collection-add"), o_scope("scope"), o_collection("collection")
+    {
+        o_scope.description("Scope name").setDefault("default");
+        o_collection.description("Collection name");
+    }
+
+    std::string scopeName()
+    {
+        return o_scope.result();
+    }
+
+    std::string collectionName()
+    {
+        return o_collection.result();
+    }
+
+  protected:
+    virtual void addOptions()
+    {
+        Handler::addOptions();
+        parser.addOption(o_scope);
+        parser.addOption(o_collection);
+    }
+    void run();
+
+  private:
+    cliopts::StringOption o_scope;
+    cliopts::StringOption o_collection;
+};
+
+class CollectionSetManifestHandler : public Handler
+{
+  public:
+    HANDLER_DESCRIPTION("Set collection manifest")
+    HANDLER_USAGE("[OPTIONS ...]")
+    CollectionSetManifestHandler() : Handler("collection-get-manifest"), o_path("path")
+    {
+        o_path.description("path to manifest file (otherwise use STDIN)").setDefault("-");
+    }
+
+  protected:
+    virtual void addOptions()
+    {
+        Handler::addOptions();
+        parser.addOption(o_path);
+    }
+    void run();
+
+  private:
+    cliopts::StringOption o_path;
+};
 }
 #endif

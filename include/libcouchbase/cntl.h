@@ -1390,10 +1390,22 @@ typedef enum {
 #define LCB_CNTL_HTTP_POOL_TIMEOUT 0x5d
 
 /**
+ * The collection UID to use by default.
+ *
+ * Requires `enable_collections` or LCB_CNTL_ENABLE_COLLECTIONS set to true.
+ *
+ * Use `default_collection_id` in the connection string
+ *
+ * @cntl_arg_both{lcb_U32*}
+ * @committed
+ */
+#define LCB_CNTL_DEFAULT_COLLECTION_ID 0x5e
+
+/**
  * This is not a command, but rather an indicator of the last item.
  * @internal
  */
-#define LCB_CNTL__MAX                    0x5e
+#define LCB_CNTL__MAX                    0x5f
 /**@}*/
 
 #ifdef __cplusplus

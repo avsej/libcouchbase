@@ -110,6 +110,7 @@
 #include <libcouchbase/couchbase.h>
 #include <libcouchbase/metrics.h>
 #include "errmap.h"
+#include "collections.h"
 
 #ifdef LCB_TRACING
 #include <libcouchbase/tracing.h>
@@ -210,6 +211,7 @@ typedef struct lcb_settings_st {
     void *dtorarg;
     char *client_string;
     lcb_pERRMAP errmap;
+    lcb_pMANIFEST c9s_manifest;
     lcb_U32 retry_nmv_interval;
     struct lcb_METRICS_st *metrics;
 #ifdef LCB_TRACING
@@ -223,6 +225,7 @@ typedef struct lcb_settings_st {
     lcb_U32 compress_min_size;
     float compress_min_ratio;
     char *network; /** network resolution, AKA "Multi Network Configurations" */
+    uint32_t default_collection_id;
 } lcb_settings;
 
 LCB_INTERNAL_API

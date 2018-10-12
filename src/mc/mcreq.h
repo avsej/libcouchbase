@@ -662,6 +662,11 @@ mcreq_map_key(mc_CMDQUEUE *queue,
 #define MCREQ_BASICPACKET_F_FALLBACKOK 0x01
 
 /**
+ * Selects random pipeline to schedule the request
+ */
+#define MCREQ_BASICPACKET_F_RANDPIPELINE 0x02
+
+/**
  * Handle the basic requirements of a packet common to all commands
  * @param queue the queue
  * @param cmd the command base structure

@@ -184,7 +184,13 @@ map_error(lcb_t instance, int in)
     case PROTOCOL_BINARY_RESPONSE_EACCESS:
         return LCB_NOT_AUTHORIZED;
     case PROTOCOL_BINARY_RESPONSE_UNKNOWN_COLLECTION:
-        return LCB_EINVAL;
+        return LCB_COLLECTION_UNKNOWN;
+    case PROTOCOL_BINARY_RESPONSE_NO_COLLECTIONS_MANIFEST:
+        return LCB_COLLECTION_NO_MANIFEST;
+    case PROTOCOL_BINARY_RESPONSE_CANNOT_APPLY_COLLECTIONS_MANIFEST:
+        return LCB_COLLECTION_CANNOT_APPLY_MANIFEST;
+    case PROTOCOL_BINARY_RESPONSE_COLLECTIONS_MANIFEST_IS_AHEAD:
+        return LCB_COLLECTION_MANIFEST_IS_AHEAD;
     default:
         if (instance != NULL) {
             return instance->callbacks.errmap(instance, in);
@@ -809,6 +815,99 @@ H_stats(mc_PIPELINE *pipeline, mc_PACKET *request,
 }
 
 static void
+H_collections_set_manifest(mc_PIPELINE *pipeline, mc_PACKET *request,
+        MemcachedResponse *response, lcb_error_t immerr)
+{
+    lcb_t root = get_instance(pipeline);
+    ResponsePack<lcb_RESPC9SMGMT> w = {{ 0 }};
+    lcb_RESPC9SMGMT& resp = w.resp;
+    init_resp(root, response, request, immerr, &resp);
+    handle_error_info(response, &w);
+    resp.rflags |= LCB_RESP_F_FINAL;
+    invoke_callback(request, root, &resp, LCB_CALLBACK_COLLECTIONS_SET_MANIFEST);
+}
+
+static lcb_C9SMANIFEST *build_manifest(const Json::Value &json)
+{
+    char const *end;
+    std::string str = Json::FastWriter().write(json);
+    if (json.empty() || !json["uid"].isString() || !json["scopes"].isArray()) {
+        return NULL;
+    }
+    lcb_C9SMANIFEST *manifest = (lcb_C9SMANIFEST *)calloc(sizeof(lcb_C9SMANIFEST), 1);
+    manifest->uid = std::strtoul(json["uid"].asCString(), NULL, 16);
+    const Json::Value &scopes = json["scopes"];
+    manifest->nscopes = scopes.size();
+    manifest->scopes = (lcb_C9SSCOPE *)calloc(sizeof(lcb_C9SSCOPE), manifest->nscopes);
+    for (size_t ii = 0; ii < manifest->nscopes; ii++) {
+        const Json::Value& scope = scopes[(Json::ArrayIndex)ii];
+        if (!scope["name"].isString() || !scope["uid"].isString()
+                || !(scope["collections"].isArray() || scope["collections"].isNull())) {
+            goto GT_FAIL;
+        }
+        manifest->scopes[ii].uid = std::strtoul(scope["uid"].asCString(), NULL, 16);
+        if (scope["name"].getString(&manifest->scopes[ii].name, &end)) {
+            manifest->scopes[ii].nname = end - manifest->scopes[ii].name;
+        }
+
+        const Json::Value& collections = scope["collections"];
+        manifest->scopes[ii].ncollections = collections.size();
+        manifest->scopes[ii].collections = (lcb_C9SCOLLECTION *)calloc(sizeof(lcb_C9SCOLLECTION), manifest->scopes[ii].ncollections);
+        for (size_t jj = 0; jj < manifest->scopes[ii].ncollections; jj++) {
+            const Json::Value &collection = collections[(Json::ArrayIndex)jj];
+            if (!collection["name"].isString() || !collection["uid"].isString()) {
+                goto GT_FAIL;
+            }
+            manifest->scopes[ii].collections[jj].uid = std::strtoul(collection["uid"].asCString(), NULL, 16);
+            if (collection["name"].getString(&manifest->scopes[ii].collections[jj].name, &end)) {
+                manifest->scopes[ii].collections[jj].nname = end - manifest->scopes[ii].collections[jj].name;
+            }
+        }
+    }
+
+    return manifest;
+GT_FAIL:
+    if (manifest) {
+        for (size_t ii = 0; ii < manifest->nscopes; ii++) {
+            free(manifest->scopes[ii].collections);
+        }
+        free(manifest->scopes);
+        free(manifest);
+    }
+    return NULL;
+}
+
+static void
+H_collections_get_manifest(mc_PIPELINE *pipeline, mc_PACKET *request,
+        MemcachedResponse *response, lcb_error_t immerr)
+{
+    lcb_t root = get_instance(pipeline);
+    ResponsePack<lcb_RESPC9SMGMT> w = {{ 0 }};
+    lcb_RESPC9SMGMT& resp = w.resp;
+    init_resp(root, response, request, immerr, &resp);
+    handle_error_info(response, &w);
+    resp.rflags |= LCB_RESP_F_FINAL;
+    resp.value = response->value();
+    Json::Value json;
+    if (resp.value) {
+        resp.nvalue = response->vallen();
+        if (resp.rc == LCB_SUCCESS) {
+            if (Json::Reader().parse(resp.value, resp.value + resp.nvalue, json)) {
+                resp.manifest = build_manifest(json);
+            }
+        }
+    }
+    invoke_callback(request, root, &resp, LCB_CALLBACK_COLLECTIONS_GET_MANIFEST);
+    if (resp.manifest) {
+        for (size_t ii = 0; ii < resp.manifest->nscopes; ii++) {
+            free(resp.manifest->scopes[ii].collections);
+        }
+        free(resp.manifest->scopes);
+        free(resp.manifest);
+    }
+}
+
+static void
 H_verbosity(mc_PIPELINE *pipeline, mc_PACKET *request,
             MemcachedResponse *response, lcb_error_t immerr)
 {
@@ -1019,6 +1118,12 @@ mcreq_dispatch_response(
 
     case PROTOCOL_BINARY_CMD_GET_CLUSTER_CONFIG:
         INVOKE_OP(H_config);
+
+    case PROTOCOL_BINARY_CMD_COLLECTIONS_SET_MANIFEST:
+        INVOKE_OP(H_collections_set_manifest);
+
+    case PROTOCOL_BINARY_CMD_COLLECTIONS_GET_MANIFEST:
+        INVOKE_OP(H_collections_get_manifest);
 
     default:
         fprintf(stderr, "COUCHBASE: Received unknown opcode=0x%x\n", res->opcode());

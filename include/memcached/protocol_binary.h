@@ -164,6 +164,19 @@ extern "C"
          * Operation attempted with an unknown collection.
          */
         PROTOCOL_BINARY_RESPONSE_UNKNOWN_COLLECTION = 0x88,
+        /**
+         * Operation attempted and requires that the collections manifest is set.
+         */
+        PROTOCOL_BINARY_RESPONSE_NO_COLLECTIONS_MANIFEST = 0x89,
+        /**
+         * Bucket Manifest update could not be applied to vbucket(s)
+         */
+        PROTOCOL_BINARY_RESPONSE_CANNOT_APPLY_COLLECTIONS_MANIFEST = 0x8a,
+        /**
+         * Client has a collection's manifest which is from the future. This means
+         * they have a uid that is greater than ours.
+         */
+        PROTOCOL_BINARY_RESPONSE_COLLECTIONS_MANIFEST_IS_AHEAD = 0x8b,
 
         /*
          * Sub-document specific responses.
@@ -307,6 +320,10 @@ extern "C"
         PROTOCOL_BINARY_CMD_UNLOCK_KEY = 0x95,
 
         PROTOCOL_BINARY_CMD_GET_CLUSTER_CONFIG = 0xb5,
+
+
+        PROTOCOL_BINARY_CMD_COLLECTIONS_SET_MANIFEST = 0xb9,
+        PROTOCOL_BINARY_CMD_COLLECTIONS_GET_MANIFEST = 0xba,
 
         /**
          * Commands for the Sub-document API.

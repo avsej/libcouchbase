@@ -732,6 +732,8 @@ typedef enum {
     LCB_CALLBACK_NOOP, /**< lcb_noop3() */
     LCB_CALLBACK_PING, /**< lcb_ping3() */
     LCB_CALLBACK_DIAG, /**< lcb_diag() */
+    LCB_CALLBACK_COLLECTIONS_SET_MANIFEST, /**< lcb_c9s_manifest_set() */
+    LCB_CALLBACK_COLLECTIONS_GET_MANIFEST, /**< lcb_c9s_manifest_get() */
     LCB_CALLBACK__MAX /* Number of callbacks */
 } lcb_CALLBACKTYPE;
 
@@ -4077,6 +4079,95 @@ lcb_resp_get_error_ref(int cbtype, const lcb_RESPBASE *rb);
  */
 LIBCOUCHBASE_API
 int lcb_is_redacting_logs(lcb_t instance);
+
+/**
+ * @defgroup lcb-collections-api Collections Management
+ * @brief Managing collections in the bucket
+ */
+
+/*
+ * @addtogroup lcb-collection-api
+ * @{
+ */
+
+/**
+ * @uncommitted
+ */
+typedef struct {
+    uint32_t uid;
+    size_t nname;
+    const char *name;
+} lcb_C9SCOLLECTION;
+
+/**
+ * @uncommitted
+ */
+typedef struct {
+    uint32_t uid;
+    size_t nname;
+    const char *name;
+    size_t ncollections;
+    lcb_C9SCOLLECTION *collections;
+} lcb_C9SSCOPE;
+
+/**
+ * @uncommitted
+ */
+typedef struct {
+    uint32_t uid;
+    size_t nscopes;
+    lcb_C9SSCOPE *scopes;
+} lcb_C9SMANIFEST;
+
+/**
+ * Response structure for collection management operations
+ * @uncommitted
+ */
+typedef struct {
+    LCB_RESP_BASE
+    size_t nvalue;
+    const char *value;
+    lcb_C9SMANIFEST *manifest;
+} lcb_RESPC9SMGMT;
+
+typedef void (*lcb_C9SGMTCALLBACK)(lcb_t instance, int cbtype, const lcb_RESPC9SMGMT *resp);
+
+#define LCB_CMDC9S_F_RAWJSON (1<<1)
+
+/**
+ * Command for collections management operations
+ * @uncommitted
+ */
+typedef struct {
+    LCB_CMD_BASE;
+    /* The payload to use when LCB_CMDC9S_F_RAWJSON is set */
+    lcb_VALBUF value;
+    lcb_C9SMANIFEST *manifest;
+} lcb_CMDC9SMGMT;
+
+/**
+ * @uncommitted
+ */
+LIBCOUCHBASE_API
+lcb_error_t lcb_c9s_manifest_set(lcb_t instance, const void *cookie, const lcb_CMDC9SMGMT *cmd);
+
+/**
+ * @uncommitted
+ */
+LIBCOUCHBASE_API
+lcb_error_t lcb_c9s_manifest_get(lcb_t instance, const void *cookie, const lcb_CMDC9SMGMT *cmd);
+
+/**
+ * @uncommitted
+ * @param instance
+ * @param scope name of scope
+ * @param collection name of collection
+ * @param uid pointer where to write collection UID
+ */
+LIBCOUCHBASE_API
+lcb_error_t lcb_c9s_get_collection_uid(lcb_t instance, const char *scope, const char *collection, uint32_t *uid);
+
+/** @} */
 
 /* Post-include some other headers */
 #ifdef __cplusplus

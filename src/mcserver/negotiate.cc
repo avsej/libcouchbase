@@ -80,6 +80,8 @@ public:
     MechStatus set_chosen_mech(std::string& mechlist, const char **data, unsigned int *ndata);
     bool request_errmap();
     bool update_errmap(const lcb::MemcachedResponse& packet);
+    bool request_collections_manifest();
+    bool update_collections_manifest(const lcb::MemcachedResponse& packet);
 
     SessionRequestImpl(lcbio_CONNDONE_cb callback, void *data, uint32_t timeout, lcbio_TABLE *iot, lcb_settings* settings_)
         : ctx(NULL), cb(callback), cbdata(data),
@@ -506,6 +508,40 @@ SessionRequestImpl::update_errmap(const lcb::MemcachedResponse& resp)
     return true;
 }
 
+bool
+SessionRequestImpl::request_collections_manifest() {
+    lcb::MemcachedRequest hdr(PROTOCOL_BINARY_CMD_COLLECTIONS_GET_MANIFEST);
+    hdr.sizes(0, 0, 0);
+    lcbio_ctx_put(ctx, hdr.data(), hdr.size());
+    lcbio_ctx_rwant(ctx, MCREQ_PKT_BASESIZE);
+    return true;
+}
+
+bool
+SessionRequestImpl::update_collections_manifest(const lcb::MemcachedResponse& resp)
+{
+    using lcb::c9s::Manifest;
+
+    Manifest* new_cm = new Manifest();
+    std::string errmsg;
+    Manifest::ParseStatus status = new_cm->parse(resp.value(), resp.vallen(), errmsg);
+    if (status != Manifest::ParseStatus::SUCCESS) {
+        delete new_cm;
+        fprintf(stderr, "CANNOT PARSE IT\n");
+        return false;
+    }
+
+    Manifest* old_cm = settings->c9s_manifest;
+    if (old_cm != NULL && old_cm->uid == new_cm->uid) {
+        /* consider manifests equal */
+        delete new_cm;
+        return true;
+    }
+    settings->c9s_manifest = new_cm;
+    delete old_cm;
+    return true;
+}
+
 // Returns true if sending the SELECT_BUCKET command, false otherwise.
 bool
 SessionRequestImpl::maybe_select_bucket() {
@@ -639,9 +675,29 @@ SessionRequestImpl::handle_read(lcbio_CTX *ioctx)
         break;
     }
 
+    case PROTOCOL_BINARY_CMD_COLLECTIONS_GET_MANIFEST: {
+        if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
+            if (update_collections_manifest(resp)) {
+                completed = true;
+            }
+        } else if (status == PROTOCOL_BINARY_RESPONSE_NO_COLLECTIONS_MANIFEST) {
+            completed = true;
+            lcb_log(LOGARGS(this, DEBUG), LOGFMT "Server does not have collections manifest configured", LOGID(this));
+        } else {
+            lcb_log(LOGARGS(this, ERROR), LOGFMT "Unexpected status 0x%x received for COLLECTIONS_GET_MANIFEST", LOGID(this), status);
+            set_error(LCB_NOT_SUPPORTED, "COLLECTIONS_GET_MANIFEST response unexpected", &resp);
+        }
+        break;
+    }
+
     case PROTOCOL_BINARY_CMD_SELECT_BUCKET: {
         if (status == PROTOCOL_BINARY_RESPONSE_SUCCESS) {
-            completed = true;
+            if (info->has_feature(PROTOCOL_BINARY_FEATURE_COLLECTIONS)) {
+                request_collections_manifest();
+            } else {
+                lcb_log(LOGARGS(this, TRACE), LOGFMT "COLLECTIONS_GET_MANIFEST unsupported/disabled", LOGID(this));
+                completed = true;
+            }
         } else if (status == PROTOCOL_BINARY_RESPONSE_EACCESS) {
             set_error(LCB_AUTH_ERROR, "Provided credentials not allowed for bucket or bucket does not exist", &resp);
         } else {

@@ -292,7 +292,7 @@ struct lcb_cntl_rdballocfactory {
  * @cntl_arg_both{int (as boolean)}
  * @volatile
  */
-#define LCB_CNTL_USE_COLLECTIONS 0x4a
+#define LCB_CNTL_ENABLE_COLLECTIONS 0x4a
 
 /**
  * Do not use fast-forward map from cluster configuration.
