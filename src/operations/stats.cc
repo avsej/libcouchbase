@@ -1,6 +1,6 @@
 /* -*- Mode: C; tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
- *     Copyright 2011-2012 Couchbase, Inc.
+ *     Copyright 2011-2018 Couchbase, Inc.
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -371,90 +371,5 @@ lcb_server_verbosity3(lcb_t instance, const void *cookie,
         return LCB_NO_MATCHING_SERVER;
     }
     MAYBE_SCHEDLEAVE(instance);
-    return LCB_SUCCESS;
-}
-
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_server_stats(lcb_t instance, const void *cookie, lcb_size_t num,
-                 const lcb_server_stats_cmd_t * const * items)
-{
-    lcb_sched_enter(instance);
-    for (size_t ii = 0; ii < num; ii++) {
-        const lcb_server_stats_cmd_t *src = items[ii];
-        lcb_CMDSTATS dst;
-        lcb_error_t err;
-
-        memset(&dst, 0, sizeof(dst));
-        dst.key.contig.bytes = src->v.v0.name;
-        dst.key.contig.nbytes = src->v.v0.nname;
-        err = lcb_stats3(instance, cookie, &dst);
-        if (err != LCB_SUCCESS) {
-            lcb_sched_fail(instance);
-            return err;
-        }
-    }
-    lcb_sched_leave(instance);
-    return LCB_SUCCESS;
-}
-
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_set_verbosity(lcb_t instance, const void *cookie, lcb_size_t num,
-                  const lcb_verbosity_cmd_t * const * items)
-{
-    lcb_sched_enter(instance);
-    for (size_t ii = 0; ii < num; ii++) {
-        lcb_CMDVERBOSITY dst;
-        lcb_error_t err;
-        const lcb_verbosity_cmd_t *src = items[ii];
-
-        memset(&dst, 0, sizeof(dst));
-        dst.level = src->v.v0.level;
-        dst.server = src->v.v0.server;
-        err = lcb_server_verbosity3(instance, cookie, &dst);
-        if (err != LCB_SUCCESS) {
-            lcb_sched_fail(instance);
-            return err;
-        }
-    }
-    lcb_sched_leave(instance);
-    return LCB_SUCCESS;
-}
-
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_flush(lcb_t instance, const void *cookie, lcb_size_t num,
-          const lcb_flush_cmd_t * const *)
-{
-    lcb_sched_enter(instance);
-    for (size_t ii = 0; ii < num; ii++) {
-        lcb_error_t rc = lcb_flush3(instance, cookie, NULL);
-        if (rc != LCB_SUCCESS) {
-            lcb_sched_fail(instance);
-            return rc;
-        }
-    }
-    lcb_sched_leave(instance);
-    return LCB_SUCCESS;
-}
-
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_server_versions(lcb_t instance, const void *cookie, lcb_size_t num,
-                    const lcb_server_version_cmd_t * const *)
-{
-    lcb_sched_enter(instance);
-
-    for (size_t ii = 0; ii < num; ii++) {
-        lcb_error_t rc = lcb_server_versions3(instance, cookie, NULL);
-        if (rc != LCB_SUCCESS) {
-            lcb_sched_fail(instance);
-            return rc;
-        }
-    }
-
-
-    lcb_sched_leave(instance);
     return LCB_SUCCESS;
 }

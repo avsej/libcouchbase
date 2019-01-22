@@ -771,8 +771,7 @@ typedef enum {
     LCB_CALLBACK_NOOP, /**< lcb_noop3() */
     LCB_CALLBACK_PING, /**< lcb_ping3() */
     LCB_CALLBACK_DIAG, /**< lcb_diag() */
-    LCB_CALLBACK_COLLECTIONS_SET_MANIFEST, /**< lcb_c9s_manifest_set() */
-    LCB_CALLBACK_COLLECTIONS_GET_MANIFEST, /**< lcb_c9s_manifest_get() */
+    LCB_CALLBACK_COLLECTIONS_GET_MANIFEST, /**< lcb_getmanifest() */
     LCB_CALLBACK_GETCID, /**< lcb_getcid() */
     LCB_CALLBACK__MAX /* Number of callbacks */
 } lcb_CALLBACKTYPE;
@@ -4203,5 +4202,4 @@ lcb_error_t lcb_getcid(lcb_t instance, const void *cookie, const lcb_CMDGETCID *
 #endif /* __cplusplus */
 #include <libcouchbase/subdoc.h>
 #include <libcouchbase/deprecated.h>
-#include <libcouchbase/api-legacy.h>
 #endif /* LIBCOUCHBASE_COUCHBASE_H */

@@ -437,7 +437,6 @@ void
 Handler::run()
 {
     lcb_create_st cropts;
-    memset(&cropts, 0, sizeof cropts);
     params.fillCropts(cropts);
     lcb_error_t err;
     err = lcb_create(&instance, &cropts);
@@ -1463,29 +1462,27 @@ HttpBaseHandler::run()
 {
     Handler::run();
     install(instance);
-    lcb_http_cmd_st cmd;
-    memset(&cmd, 0, sizeof cmd);
+    lcb_CMDHTTP cmd;
     string uri = getURI();
     const string& body = getBody();
 
-    cmd.v.v0.method = getMethod();
-    cmd.v.v0.chunked = 1;
-    cmd.v.v0.path = uri.c_str();
-    cmd.v.v0.npath = uri.size();
+    cmd.method = getMethod();
+    LCB_CMD_SET_KEY(&cmd, uri.c_str(), uri.size());
     if (!body.empty()) {
-        cmd.v.v0.body = body.c_str();
-        cmd.v.v0.nbody = body.size();
+        cmd.body = body.c_str();
+        cmd.nbody = body.size();
     }
     string ctype = getContentType();
     if (!ctype.empty()) {
-        cmd.v.v0.content_type = ctype.c_str();
+        cmd.content_type = ctype.c_str();
     }
 
-    lcb_http_request_t dummy;
+    cmd.type = isAdmin() ? LCB_HTTP_TYPE_MANAGEMENT : LCB_HTTP_TYPE_VIEW;
+    cmd.cmdflags |= LCB_CMDHTTP_F_STREAM;
+
     lcb_error_t err;
-    err = lcb_make_http_request(instance, (HttpReceiver*)this,
-        isAdmin() ? LCB_HTTP_TYPE_MANAGEMENT : LCB_HTTP_TYPE_VIEW,
-                &cmd, &dummy);
+    err = lcb_http3(instance, this, &cmd);
+
     if (err != LCB_SUCCESS) {
         throw LcbError(err);
     }
