@@ -122,36 +122,6 @@ TEST_F(ServeropsUnitTest, testServerVersion)
     EXPECT_LT(1, numcallbacks);
 }
 
-
-extern "C" {
-    static void testFlushCallback(lcb_t, lcb_CALLBACKTYPE, const lcb_RESPFLUSH *resp)
-    {
-        int *counter = (int *)resp->cookie;
-        EXPECT_TRUE(resp->rc == LCB_SUCCESS || resp->rc == LCB_NOT_SUPPORTED);
-        ++(*counter);
-    }
-}
-
-/**
- * @test Flush
- * @pre Request a flush operation
- * @post Response is either a success or a @c NOT_SUPPORTED return
- */
-TEST_F(ServeropsUnitTest, testFlush)
-{
-    SKIP_UNLESS_MOCK();
-    lcb_t instance;
-    HandleWrap hw;
-    createConnection(hw, instance);
-
-    (void)lcb_install_callback3(instance, LCB_CALLBACK_FLUSH, (lcb_RESPCALLBACK)testFlushCallback);
-    int numcallbacks = 0;
-    lcb_CMDFLUSH cmd = {0};
-    EXPECT_EQ(LCB_SUCCESS, lcb_flush3(instance, &numcallbacks, &cmd));
-    lcb_wait(instance);
-    EXPECT_LT(1, numcallbacks);
-}
-
 extern "C" {
     static char *verbosity_endpoint;
 

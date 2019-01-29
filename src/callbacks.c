@@ -42,7 +42,6 @@ typedef union {
     lcb_RESPREMOVE del;
     lcb_RESPENDURE endure;
     lcb_RESPUNLOCK unl;
-    lcb_RESPFLUSH flush;
     lcb_RESPSTATS stats;
     lcb_RESPMCVERSION mcversion;
     lcb_RESPVERBOSITY verbosity;
@@ -139,8 +138,6 @@ lcb_strcbtype(int cbtype)
         return "VERSIONS";
     case LCB_CALLBACK_VERBOSITY:
         return "VERBOSITY";
-    case LCB_CALLBACK_FLUSH:
-        return "FLUSH";
     case LCB_CALLBACK_OBSERVE:
         return "OBSERVE";
     case LCB_CALLBACK_GETREPLICA:

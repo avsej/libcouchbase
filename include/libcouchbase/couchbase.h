@@ -758,7 +758,6 @@ typedef enum {
     LCB_CALLBACK_STATS, /**< lcb_stats3() */
     LCB_CALLBACK_VERSIONS, /**< lcb_server_versions3() */
     LCB_CALLBACK_VERBOSITY, /**< lcb_server_verbosity3() */
-    LCB_CALLBACK_FLUSH, /**< lcb_flush3() */
     LCB_CALLBACK_OBSERVE, /**< lcb_observe3_ctxnew() */
     LCB_CALLBACK_GETREPLICA, /**< lcb_rget3() */
     LCB_CALLBACK_ENDURE, /**< lcb_endure3_ctxnew() */
@@ -2435,7 +2434,7 @@ typedef lcb_RESPBASE lcb_RESPCBFLUSH;
  *
  * Flush a bucket
  * This function will properly flush any type of bucket using the REST API
- * via HTTP. This may be used in a manner similar to the older lcb_flush3().
+ * via HTTP.
  *
  * The callback invoked under ::LCB_CALLBACK_CBFLUSH will be invoked with either
  * a success or failure status depending on the outcome of the operation. Note
@@ -2459,13 +2458,6 @@ lcb_cbflush3(lcb_t instance, const void *cookie, const lcb_CMDCBFLUSH *cmd);
 
 typedef lcb_CMDBASE lcb_CMDFLUSH;
 typedef lcb_RESPSERVERBASE lcb_RESPFLUSH;
-/**
- * @volatile
- * @deprecated
- */
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_flush3(lcb_t instance, const void *cookie, const lcb_CMDFLUSH *cmd);
 /**@} (Group: Flush) */
 
 /**

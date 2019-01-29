@@ -184,7 +184,6 @@ handle_bcast(mc_PIPELINE *pipeline, mc_PACKET *req, lcb_error_t err,
         lcb_RESPSERVERBASE *base;
         lcb_RESPVERBOSITY *verbosity;
         lcb_RESPMCVERSION *version;
-        lcb_RESPFLUSH *flush;
         lcb_RESPNOOP *noop;
     } u_resp;
 
@@ -192,7 +191,6 @@ handle_bcast(mc_PIPELINE *pipeline, mc_PACKET *req, lcb_error_t err,
         lcb_RESPSERVERBASE base;
         lcb_RESPVERBOSITY verbosity;
         lcb_RESPMCVERSION version;
-        lcb_RESPFLUSH flush;
         lcb_RESPNOOP noop;
     } u_empty;
 
@@ -257,9 +255,7 @@ pkt_bcast_simple(lcb_t instance, const void *cookie, lcb_CALLBACKTYPE type)
 
         hdr.request.magic = PROTOCOL_BINARY_REQ;
         hdr.request.opaque = pkt->opaque;
-        if (type == LCB_CALLBACK_FLUSH) {
-            hdr.request.opcode = PROTOCOL_BINARY_CMD_FLUSH;
-        } else if (type == LCB_CALLBACK_VERSIONS) {
+        if (type == LCB_CALLBACK_VERSIONS) {
             hdr.request.opcode = PROTOCOL_BINARY_CMD_VERSION;
         } else if (type == LCB_CALLBACK_NOOP) {
             hdr.request.opcode = PROTOCOL_BINARY_CMD_NOOP;
@@ -294,13 +290,6 @@ lcb_error_t
 lcb_noop3(lcb_t instance, const void *cookie, const lcb_CMDNOOP *)
 {
     return pkt_bcast_simple(instance, cookie, LCB_CALLBACK_NOOP);
-}
-
-LIBCOUCHBASE_API
-lcb_error_t
-lcb_flush3(lcb_t instance, const void *cookie, const lcb_CMDFLUSH *)
-{
-    return pkt_bcast_simple(instance, cookie, LCB_CALLBACK_FLUSH);
 }
 
 LIBCOUCHBASE_API

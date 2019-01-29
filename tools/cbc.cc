@@ -295,8 +295,6 @@ common_server_callback(lcb_t, int cbtype, const lcb_RESPSERVERBASE *sbase)
     string msg;
     if (cbtype == LCB_CALLBACK_VERBOSITY) {
         msg = "Set verbosity";
-    } else if (cbtype == LCB_CALLBACK_FLUSH) {
-        msg = "Flush";
     } else if (cbtype == LCB_CALLBACK_VERSIONS) {
         const lcb_RESPMCVERSION *resp = (const lcb_RESPMCVERSION *)sbase;
         msg = string(resp->mcversion, resp->nversion);
@@ -1233,24 +1231,6 @@ PingHandler::run()
     lcb_wait(instance);
 }
 
-void
-McFlushHandler::run()
-{
-    Handler::run();
-
-    lcb_CMDFLUSH cmd = { 0 };
-    lcb_error_t err;
-    lcb_install_callback3(instance, LCB_CALLBACK_FLUSH, (lcb_RESPCALLBACK)common_server_callback);
-    lcb_sched_enter(instance);
-    err = lcb_flush3(instance, NULL, &cmd);
-    if (err != LCB_SUCCESS) {
-        throw LcbError(err);
-    }
-    lcb_sched_leave(instance);
-    lcb_wait(instance);
-}
-
-
 extern "C" {
 static void cbFlushCb(lcb_t, int, const lcb_RESPBASE *resp)
 {
@@ -1826,7 +1806,6 @@ static const char* optionsOrder[] = {
         "observe-seqno",
         "incr",
         "decr",
-        "mcflush",
         "hash",
         "lock",
         "unlock",
@@ -1924,7 +1903,6 @@ setupHandlers()
     handlers_s["watch"] = new WatchHandler();
     handlers_s["verbosity"] = new VerbosityHandler();
     handlers_s["ping"] = new PingHandler();
-    handlers_s["mcflush"] = new McFlushHandler();
     handlers_s["incr"] = new IncrHandler();
     handlers_s["decr"] = new DecrHandler();
     handlers_s["admin"] = new AdminHandler();

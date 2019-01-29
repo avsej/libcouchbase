@@ -21,7 +21,8 @@
   | `lcb_server_stats`       | `lcb_stats3`           |
   | `lcb_server_versions`    | `lcb_server_versions3` |
   | `lcb_set_verbosity`      | `lcb_server_verbosity3`|
-  | `lcb_flush`              | `lcb_flush3`           |
+  | `lcb_flush`              | `lcb_cbflush3`         |
+  | `lcb_flush3`             | `lcb_cbflush3`         |
   | `lcb_make_http_request`  | `lcb_http3`            |
   |--------------------------|------------------------|
 
