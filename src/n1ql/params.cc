@@ -175,8 +175,7 @@ lcb_n1p_setconsistent_handle(lcb_N1QLPARAMS *params, lcb_t instance)
     for (size_t ii = 0; ii < vbmax; ++ii) {
         lcb_KEYBUF kb;
         kb.type = LCB_KV_VBID;
-        kb.contig.nbytes = ii;
-        kb.contig.bytes = NULL;
+        kb.vbid = ii;
         const lcb_MUTATION_TOKEN *mt = lcb_get_mutation_token(instance, &kb, &rc);
         if (rc == LCB_SUCCESS && mt != NULL) {
             if (sv_json == NULL) {

@@ -349,7 +349,7 @@ lcb_error_t Durset::MCTX_addcmd(const lcb_CMDBASE *cmd) {
     Item& ent = entries.back();
 
     int vbid, srvix;
-    mcreq_map_key(&instance->cmdq, &cmd->key, &cmd->_hashkey,
+    mcreq_map_key(&instance->cmdq, &cmd->key,
         MCREQ_PKT_BASESIZE, &vbid, &srvix);
 
     /* ok. now let's initialize the entry..*/

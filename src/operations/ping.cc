@@ -20,6 +20,9 @@
 #include "http/http.h"
 #include "auth-priv.h"
 
+DEFINE_ALLOCATORS(cmdping, lcb_CMDPING)
+DEFINE_ALLOCATORS(cmddiag, lcb_CMDDIAG)
+
 static void refcnt_dtor_ping(mc_PACKET *);
 static void handle_ping(mc_PIPELINE *, mc_PACKET *, lcb_error_t, const void *);
 

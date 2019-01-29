@@ -455,7 +455,7 @@ lcb_error_t lcb_create(lcb_t *instance,
     if (settings->logger == NULL) {
         settings->logger = lcb_init_console_logger();
     }
-    settings->iid = lcb_next_rand32();
+    settings->iid = lcb_next_rand64();
     if (spec.loglevel()) {
         lcb_U32 val = spec.loglevel();
         lcb_cntl(obj, LCB_CNTL_SET, LCB_CNTL_CONLOGGER_LEVEL, &val);

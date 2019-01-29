@@ -529,8 +529,13 @@ lcb_set_auth(lcb_t instance, lcb_AUTHENTICATOR *auth);
     /**The key for the document itself. This should be set via LCB_CMD_SET_KEY() */ \
     lcb_KEYBUF key; \
     \
-    /** \volatile */ \
-    lcb_KEYBUF _hashkey
+    /** Operation timeout (in microseconds). When zero, the library will use default value. */ \
+    lcb_U32 timeout; \
+    /** Parent tracing span */ \
+    lcbtrace_SPAN *pspan; \
+    /** @private private value for library needs. @see LCB_CMD_F_USEPRIV.
+     * Release using lcb_cmd*_dispose() */ \
+    void *priv
 
 /**
  * @uncommitted
@@ -591,6 +596,10 @@ typedef struct lcb_CMDBASE {
  */
 #define LCB_CMD_F_MULTIAUTH (1<<1)
 
+#define LCB_CMD_F_USEPRIV (1<<2)
+/* allocated using lcb_cmd*_alloc() */
+#define LCB_CMD_F_USEALLOC (1<<3)
+
 /**
  * Set the key for the command.
  * @param cmd A command derived from lcb_CMDBASE
@@ -608,20 +617,6 @@ typedef struct lcb_CMDBASE {
 #define LCB_CMD_SET_KEY(cmd, keybuf, keylen) \
         LCB_KREQ_SIMPLE(&(cmd)->key, keybuf, keylen)
 
-/**
- * Sets the vBucket ID for the item. This accomplishes the same effect as
- * _hashkey_ except that this assumes the vBucket has already been obtained.
- *
- * The intent of this API is to override the default vBucket hashing/calculation.
- *
- * @param cmd the command structure
- * @param vbid the vBucket ID for the key.
- * @volatile
- */
-#define LCB_CMD__SETVBID(cmd, vbid) do { \
-        (cmd)->_hashkey.type = LCB_KV_VBID; \
-        (cmd)->_hashkey.contig.nbytes = vbid; \
-} while (0);
 /**@}*/
 
 /**
@@ -959,6 +954,9 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_get3(lcb_t instance, const void *cookie, const lcb_CMDGET *cmd);
+
+LIBCOUCHBASE_API lcb_CMDGET *lcb_cmdget_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdget_dispose(lcb_CMDGET *cmd);
 /**@}*/
 
 /**
@@ -1080,6 +1078,9 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_rget3(lcb_t instance, const void *cookie, const lcb_CMDGETREPLICA *cmd);
+
+LIBCOUCHBASE_API lcb_CMDGETREPLICA *lcb_cmdgetreplica_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdgetreplica_dispose(lcb_CMDGETREPLICA *cmd);
 /**@}*/
 
 /**
@@ -1278,6 +1279,9 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_store3(lcb_t instance, const void *cookie, const lcb_CMDSTORE *cmd);
+
+LIBCOUCHBASE_API lcb_CMDSTORE *lcb_cmdstore_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdstore_dispose(lcb_CMDSTORE *cmd);
 /**@}*/
 
 /**
@@ -1353,6 +1357,9 @@ typedef lcb_RESPBASE lcb_RESPREMOVE;
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_remove3(lcb_t instance, const void *cookie, const lcb_CMDREMOVE * cmd);
+
+LIBCOUCHBASE_API lcb_CMDREMOVE *lcb_cmdremove_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdremove_dispose(lcb_CMDREMOVE *cmd);
 /**@}*/
 
 /**
@@ -2162,6 +2169,9 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_counter3(lcb_t instance, const void *cookie, const lcb_CMDCOUNTER *cmd);
+
+LIBCOUCHBASE_API lcb_CMDCOUNTER *lcb_cmdcounter_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdcounter_dispose(lcb_CMDCOUNTER *cmd);
 /**@} (Group: Counter) */
 
 /**@ingroup lcb-kv-api
@@ -2219,6 +2229,9 @@ typedef lcb_RESPBASE lcb_RESPUNLOCK;
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_unlock3(lcb_t instance, const void *cookie, const lcb_CMDUNLOCK *cmd);
+
+LIBCOUCHBASE_API lcb_CMDUNLOCK *lcb_cmdunlock_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdunlock_dispose(lcb_CMDUNLOCK *cmd);
 /**@} (Group: Unlock) */
 
 /**@ingroup lcb-kv-api
@@ -2279,6 +2292,9 @@ typedef lcb_RESPBASE lcb_RESPTOUCH;
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_touch3(lcb_t instance, const void *cookie, const lcb_CMDTOUCH *cmd);
+
+LIBCOUCHBASE_API lcb_CMDTOUCH *lcb_cmdtouch_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdtouch_dispose(lcb_CMDTOUCH *cmd);
 /**@} (Group: Touch) */
 /**@} (Group: KV API) */
 
@@ -2363,6 +2379,9 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_stats3(lcb_t instance, const void *cookie, const lcb_CMDSTATS * cmd);
+
+LIBCOUCHBASE_API lcb_CMDSTATS *lcb_cmdstats_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdstats_dispose(lcb_CMDSTATS *cmd);
 /**@} (Name: Stats) */
 
 /**@name Server Versions
@@ -2370,6 +2389,8 @@ lcb_stats3(lcb_t instance, const void *cookie, const lcb_CMDSTATS * cmd);
  * the internal version of the memcached server.
  * @{
  */
+
+typedef lcb_CMDBASE lcb_CMDVERSIONS;
 
 /**@brief Response structure for the version command */
 typedef struct {
@@ -2384,8 +2405,10 @@ typedef struct {
  */
 LIBCOUCHBASE_API
 lcb_error_t
-lcb_server_versions3(lcb_t instance, const void *cookie, const lcb_CMDBASE * cmd);
+lcb_server_versions3(lcb_t instance, const void *cookie, const lcb_CMDVERSIONS * cmd);
 
+LIBCOUCHBASE_API lcb_CMDVERSIONS *lcb_cmdversions_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdversions_dispose(lcb_CMDVERSIONS *cmd);
 /**@} (Name: MCversion) */
 
 /**
@@ -2412,6 +2435,9 @@ typedef lcb_RESPSERVERBASE lcb_RESPVERBOSITY;
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_server_verbosity3(lcb_t instance, const void *cookie, const lcb_CMDVERBOSITY *cmd);
+
+LIBCOUCHBASE_API lcb_CMDVERBOSITY *lcb_cmdverbosity_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdverbosity_dispose(lcb_CMDVERBOSITY *cmd);
 /**@} (Name: Verbosity) */
 /**@} (Group: Misc) */
 
@@ -2455,6 +2481,8 @@ LIBCOUCHBASE_API
 lcb_error_t
 lcb_cbflush3(lcb_t instance, const void *cookie, const lcb_CMDCBFLUSH *cmd);
 
+LIBCOUCHBASE_API lcb_CMDCBFLUSH *lcb_cmdcbflush_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdcbflush_dispose(lcb_CMDCBFLUSH *cmd);
 
 typedef lcb_CMDBASE lcb_CMDFLUSH;
 typedef lcb_RESPSERVERBASE lcb_RESPFLUSH;
@@ -2484,6 +2512,9 @@ typedef lcb_RESPSERVERBASE lcb_RESPNOOP;
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_noop3(lcb_t instance, const void *cookie, const lcb_CMDNOOP *cmd);
+
+LIBCOUCHBASE_API lcb_CMDNOOP *lcb_cmdnoop_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdnoop_dispose(lcb_CMDNOOP *cmd);
 /**@} (Group: NOOP) */
 
 /**
@@ -2656,6 +2687,9 @@ LIBCOUCHBASE_API
 lcb_error_t
 lcb_ping3(lcb_t instance, const void *cookie, const lcb_CMDPING *cmd);
 
+LIBCOUCHBASE_API lcb_CMDPING *lcb_cmdping_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdping_dispose(lcb_CMDPING *cmd);
+
 typedef struct {
     LCB_CMD_BASE;
     int options;  /**< extra options, e.g. for result representation */
@@ -2703,6 +2737,9 @@ typedef struct {
  */
 LIBCOUCHBASE_API
 lcb_error_t lcb_diag(lcb_t instance, const void *cookie, const lcb_CMDDIAG *cmd);
+
+LIBCOUCHBASE_API lcb_CMDDIAG *lcb_cmddiag_alloc(void);
+LIBCOUCHBASE_API void lcb_cmddiag_dispose(lcb_CMDDIAG *cmd);
 /**@} (Group: PING) */
 
 /**@ingroup lcb-public-api
@@ -2924,6 +2961,8 @@ LIBCOUCHBASE_API
 lcb_error_t
 lcb_http3(lcb_t instance, const void *cookie, const lcb_CMDHTTP *cmd);
 
+LIBCOUCHBASE_API lcb_CMDHTTP *lcb_cmdhttp_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdhttp_dispose(lcb_CMDHTTP *cmd);
 /**
  * @brief Cancel ongoing HTTP request
  *
@@ -4160,6 +4199,8 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t lcb_getmanifest(lcb_t instance, const void *cookie, const lcb_CMDGETMANIFEST *cmd);
 
+LIBCOUCHBASE_API lcb_CMDGETMANIFEST *lcb_cmdgetmanifest_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdgetmanifest_dispose(lcb_CMDGETMANIFEST *cmd);
 
 typedef struct {
     LCB_CMD_BASE;
@@ -4186,6 +4227,8 @@ typedef struct {
 LIBCOUCHBASE_API
 lcb_error_t lcb_getcid(lcb_t instance, const void *cookie, const lcb_CMDGETCID *cmd);
 
+LIBCOUCHBASE_API lcb_CMDGETCID *lcb_cmdgetcid_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdgetcid_dispose(lcb_CMDGETCID *cmd);
 /** @} */
 
 /* Post-include some other headers */

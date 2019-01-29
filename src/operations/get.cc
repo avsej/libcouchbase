@@ -18,6 +18,10 @@
 #include "internal.h"
 #include "trace.h"
 
+DEFINE_ALLOCATORS(cmdget, lcb_CMDGET)
+DEFINE_ALLOCATORS(cmdgetreplica, lcb_CMDGETREPLICA)
+DEFINE_ALLOCATORS(cmdunlock, lcb_CMDUNLOCK)
+
 LIBCOUCHBASE_API
 lcb_error_t
 lcb_get3(lcb_t instance, const void *cookie, const lcb_CMDGET *cmd)
@@ -243,8 +247,7 @@ lcb_rget3(lcb_t instance, const void *cookie, const lcb_CMDGETREPLICA *cmd)
         return LCB_NO_MATCHING_SERVER;
     }
 
-    mcreq_map_key(cq, &cmd->key, &cmd->_hashkey, MCREQ_PKT_BASESIZE,
-        &vbid, &ixtmp);
+    mcreq_map_key(cq, &cmd->key, MCREQ_PKT_BASESIZE, &vbid, &ixtmp);
 
     /* The following blocks will also validate that the entire index range is
      * valid. This is in order to ensure that we don't allocate the cookie

@@ -141,13 +141,13 @@ int main(int argc, char *argv[])
     for (ii = 0; ii < num_queries; ii++) {
         lcb_CMDANALYTICS *cmd;
         int idx = 0;
-        cmd = lcb_analytics_new();
-        lcb_analytics_setcallback(cmd, row_callback);
-        lcb_analytics_setquery(cmd, queries[ii].query, queries[ii].query_len);
+        cmd = lcb_cmdanalytics_alloc();
+        lcb_cmdanalytics_setcallback(cmd, row_callback);
+        lcb_cmdanalytics_setquery(cmd, queries[ii].query, queries[ii].query_len);
         check(lcb_analytics_query(instance, &idx, cmd), "schedule analytics query");
         printf("----> \x1b[1m%s\x1b[0m\n", queries[ii].comment);
         printf("----> \x1b[36m%.*s\x1b[0m\n", (int)queries[ii].query_len, queries[ii].query);
-        lcb_analytics_free(cmd);
+        lcb_cmdanalytics_dispose(cmd);
         lcb_wait(instance);
     }
 

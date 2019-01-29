@@ -346,6 +346,9 @@ lcb_view_cancel(lcb_t instance, lcb_VIEWHANDLE handle);
 LIBCOUCHBASE_API
 void lcb_view_set_parent_span(lcb_t instance, lcb_VIEWHANDLE handle, lcbtrace_SPAN *span);
 
+LIBCOUCHBASE_API lcb_CMDVIEWQUERY *lcb_cmdviewquery_alloc();
+LIBCOUCHBASE_API void lcb_cmdviewquery_dispose(lcb_CMDVIEWQUERY *cmd);
+
 #endif
 /**
  * @} (Group: Tracing)

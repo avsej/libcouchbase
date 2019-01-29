@@ -22,6 +22,8 @@
 #include "auth-priv.h"
 #include "trace.h"
 
+DEFINE_ALLOCATORS(cmdhttp, lcb_CMDHTTP)
+
 using namespace lcb::http;
 
 #define LOGFMT "<%s%s%s:%s> "

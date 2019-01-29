@@ -182,7 +182,8 @@ CasDurset::poll_impl()
         }
 
         LCB_KREQ_SIMPLE(&cmd.key, ent.res().key, ent.res().nkey);
-        LCB_CMD__SETVBID(&cmd, ent.vbid);
+        cmd.key.vbid = ent.vbid;
+        cmd.key.type = LCB_KV_VBID;
         cmd.servers_ = servers;
         cmd.nservers_ = nservers;
 

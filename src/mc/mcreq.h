@@ -648,17 +648,16 @@ void
 mcreq_wipe_packet(mc_PIPELINE *pipeline, mc_PACKET *packet);
 
 /**
- * Function to extract mapping information given a key and a hashkey
+ * Function to extract mapping information given a key or precomputed vbucket id
  * @param queue The command queue
  * @param key The structure for the key
- * @param hashkey The optional hashkey structure
+ * @param vbid_in The optional precomputed vbucket id
  * @param nhdr The size of the header (for KV_CONTIG)
  * @param[out] vbid The vBucket ID
  * @param[out] srvix The master server's index
  */
 void
-mcreq_map_key(mc_CMDQUEUE *queue,
-    const lcb_KEYBUF *key, const lcb_KEYBUF *hashkey,
+mcreq_map_key(mc_CMDQUEUE *queue, const lcb_KEYBUF *key,
     unsigned nhdr, int *vbid, int *srvix);
 
 

@@ -137,13 +137,13 @@ int main(int argc, char *argv[])
         const char *stmt = "SELECT * FROM breweries LIMIT 2";
         lcb_CMDANALYTICS *cmd;
         int idx = 0;
-        cmd = lcb_analytics_new();
-        lcb_analytics_setcallback(cmd, row_callback);
-        lcb_analytics_setstatementz(cmd, stmt);
-        lcb_analytics_ingest_setmethod(cmd, LCB_ANALYTICSINGEST_UPSERT);
+        cmd = lcb_cmdanalytics_alloc();
+        lcb_cmdanalytics_setcallback(cmd, row_callback);
+        lcb_cmdanalytics_setstatementz(cmd, stmt);
+        lcb_cmdanalytics_ingest_setmethod(cmd, LCB_ANALYTICSINGEST_UPSERT);
         check(lcb_analytics_query(instance, &idx, cmd), "schedule analytics query");
         printf("----> \x1b[36m%s\x1b[0m\n", stmt);
-        lcb_analytics_free(cmd);
+        lcb_cmdanalytics_dispose(cmd);
         lcb_wait(instance);
     }
 

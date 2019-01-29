@@ -529,6 +529,9 @@ lcb_n1ql_cancel(lcb_t instance, lcb_N1QLHANDLE handle);
 LIBCOUCHBASE_API
 void lcb_n1ql_set_parent_span(lcb_t instance, lcb_N1QLHANDLE handle, lcbtrace_SPAN *span);
 
+LIBCOUCHBASE_API lcb_CMDN1QL *lcb_cmdn1ql_alloc();
+LIBCOUCHBASE_API void lcb_cmdn1ql_dispose(lcb_CMDN1QL *cmd);
+
 #endif
 /**
  * @} (Group: Tracing)

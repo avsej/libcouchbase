@@ -415,8 +415,7 @@ void lcbtrace_span_add_tag_bool(lcbtrace_SPAN *span, const char *name, int value
  */
 #define LCB_CMD_SET_TRACESPAN(cmd, span)                                                                               \
     do {                                                                                                               \
-        (cmd)->_hashkey.type = LCB_KV_TRACESPAN;                                                                       \
-        (cmd)->_hashkey.contig.bytes = span;                                                                           \
+        (cmd)->pspan = span;                                                                                            \
     } while (0);
 
 /**

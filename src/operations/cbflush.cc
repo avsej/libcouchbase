@@ -17,6 +17,8 @@
 #include "internal.h"
 #include <http/http.h>
 
+DEFINE_ALLOCATORS(cmdcbflush, lcb_CMDCBFLUSH)
+
 static void
 flush_cb(lcb_t instance, int, const lcb_RESPBASE *rb)
 {

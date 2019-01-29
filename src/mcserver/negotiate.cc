@@ -348,7 +348,7 @@ SessionRequestImpl::generate_agent_json()
         client_string.resize(200);
     }
     char id[34] = {};
-    snprintf(id, sizeof(id), "%016" PRIx64 "/%016" PRIx64, (lcb_U64)settings->iid, ctx->sock->id);
+    snprintf(id, sizeof(id), "%016" PRIx64 "/%016" PRIx64, settings->iid, ctx->sock->id);
 
     Json::Value ua;
     ua["a"] = client_string;

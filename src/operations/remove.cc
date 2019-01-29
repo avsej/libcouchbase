@@ -18,6 +18,8 @@
 #include "internal.h"
 #include "trace.h"
 
+DEFINE_ALLOCATORS(cmdremove, lcb_CMDREMOVE)
+
 LIBCOUCHBASE_API
 lcb_error_t lcb_remove3(lcb_t instance, const void *cookie, const lcb_CMDREMOVE *cmd)
 {

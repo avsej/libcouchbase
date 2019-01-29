@@ -17,6 +17,8 @@
 #include "internal.h"
 #include "trace.h"
 
+DEFINE_ALLOCATORS(cmdcounter, lcb_CMDCOUNTER)
+
 LIBCOUCHBASE_API
 lcb_error_t lcb_counter3(lcb_t instance, const void *cookie, const lcb_CMDCOUNTER *cmd)
 {

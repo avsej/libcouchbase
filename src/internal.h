@@ -188,6 +188,25 @@ struct lcb_st {
  */
 #define LCBT_SUPPORT_SYNCREPLICATION(instance) LCBT_SETTING(instance, synchronous_replication)
 
+#define DEFINE_ALLOCATORS(_cmdname_, _cmdtype_)                                                                        \
+                                                                                                                       \
+    LIBCOUCHBASE_API _cmdtype_ *lcb_##_cmdname_##_alloc()                                                              \
+    {                                                                                                                  \
+        _cmdtype_ *cmd = (_cmdtype_ *)calloc(1, sizeof(_cmdtype_));                                                    \
+        cmd->cmdflags |= LCB_CMD_F_USEALLOC;                                                                           \
+        return cmd;                                                                                                    \
+    }                                                                                                                  \
+                                                                                                                       \
+    LIBCOUCHBASE_API void lcb_##_cmdname_##_dispose(_cmdtype_ *cmd)                                                    \
+    {                                                                                                                  \
+        if (cmd->cmdflags & LCB_CMD_F_USEPRIV) {                                                                       \
+            free(cmd->priv);                                                                                           \
+            cmd->priv = NULL;                                                                                          \
+        }                                                                                                              \
+        if (cmd->cmdflags & LCB_CMD_F_USEALLOC) {                                                                      \
+            free(cmd);                                                                                                 \
+        }                                                                                                              \
+    }
 
 void lcb_initialize_packet_handlers(lcb_t instance);
 

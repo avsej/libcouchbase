@@ -19,6 +19,8 @@
 #include <string>
 #include <include/libcouchbase/subdoc.h>
 
+DEFINE_ALLOCATORS(cmdsubdoc, lcb_CMDSUBDOC)
+
 static lcb_size_t
 get_value_size(mc_PACKET *packet)
 {
@@ -486,7 +488,7 @@ sd3_single(lcb_t instance, const void *cookie, const lcb_CMDSUBDOC *cmd)
     hdr.request.opaque = packet->opaque;
     hdr.request.opcode = traits.opcode;
     hdr.request.cas = lcb_htonll(cmd->cas);
-    hdr.request.bodylen = htonl(hdr.request.extlen + ffextlen + 
+    hdr.request.bodylen = htonl(hdr.request.extlen + ffextlen +
         ntohs(hdr.request.keylen) + get_value_size(packet));
 
     memcpy(SPAN_BUFFER(&packet->kh_span), hdr.bytes, sizeof hdr.bytes);
@@ -624,7 +626,7 @@ lcb_subdoc3(lcb_t instance, const void *cookie, const lcb_CMDSUBDOC *cmd)
     hdr.request.extlen = pkt->extlen;
     hdr.request.opaque = pkt->opaque;
     hdr.request.cas = lcb_htonll(cmd->cas);
-    hdr.request.bodylen = htonl(hdr.request.extlen + ffextlen + 
+    hdr.request.bodylen = htonl(hdr.request.extlen + ffextlen +
         ntohs(hdr.request.keylen) + ctx.payload_size);
     memcpy(SPAN_BUFFER(&pkt->kh_span), hdr.bytes, sizeof(hdr.bytes));
     if (cmd->dur_level && new_durability_supported) {

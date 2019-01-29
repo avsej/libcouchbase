@@ -19,6 +19,8 @@
 #include "trace.h"
 #include "durability_internal.h"
 
+DEFINE_ALLOCATORS(cmdstore, lcb_CMDSTORE)
+
 struct DurStoreCtx : mc_REQDATAEX {
     lcb_t instance;
     lcb_U16 persist_to;

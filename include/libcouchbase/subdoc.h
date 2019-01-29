@@ -289,6 +289,9 @@ LIBCOUCHBASE_API
 lcb_error_t
 lcb_subdoc3(lcb_t instance, const void *cookie, const lcb_CMDSUBDOC *cmd);
 
+LIBCOUCHBASE_API lcb_CMDSUBDOC *lcb_cmdsubdoc_alloc(void);
+LIBCOUCHBASE_API void lcb_cmdsubdoc_dispose(lcb_CMDSUBDOC *cmd);
+
 /**
  * Response structure for multi lookups. If the top level response is successful
  * then the individual results may be retrieved using lcb_sdmlookup_next()

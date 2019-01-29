@@ -175,7 +175,7 @@ lcb_error_t ObserveCtx::MCTX_addcmd(const lcb_CMDBASE *cmdbase)
         return LCB_NOT_SUPPORTED;
     }
 
-    mcreq_map_key(cq, &cmd->key, &cmd->_hashkey, 24, &vbid, &srvix_dummy);
+    mcreq_map_key(cq, &cmd->key, 24, &vbid, &srvix_dummy);
 
     if (cmd->servers_) {
         servers = cmd->servers_;

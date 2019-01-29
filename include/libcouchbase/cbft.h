@@ -140,6 +140,9 @@ lcb_fts_cancel(lcb_t, lcb_FTSHANDLE);
 LIBCOUCHBASE_API
 void lcb_fts_set_parent_span(lcb_t instance, lcb_FTSHANDLE handle, lcbtrace_SPAN *span);
 
+LIBCOUCHBASE_API lcb_CMDFTS *lcb_cmdfts_alloc();
+LIBCOUCHBASE_API void lcb_cmdfts_dispose(lcb_CMDFTS *cmd);
+
 #endif
 /**
  * @} (Group: Tracing)

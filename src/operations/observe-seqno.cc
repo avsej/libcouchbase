@@ -1,3 +1,4 @@
+/* -*- Mode: C; tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
  *     Copyright 2015 Couchbase, Inc.
  *
@@ -83,7 +84,7 @@ lcb_get_mutation_token(lcb_t instance, const lcb_KEYBUF *kb, lcb_error_t *errp)
         return NULL;
     }
 
-    mcreq_map_key(&instance->cmdq, kb, kb, 0, &vbix, &srvix);
+    mcreq_map_key(&instance->cmdq, kb, 0, &vbix, &srvix);
     existing = instance->dcpinfo + vbix;
     if (existing->uuid_ == 0 && existing->seqno_ == 0) {
         *errp = LCB_DURABILITY_NO_MUTATION_TOKENS;

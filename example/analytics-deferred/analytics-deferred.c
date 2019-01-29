@@ -105,13 +105,13 @@ static void row_callback(lcb_t instance, int type, const lcb_RESPANALYTICS *resp
         printf("\n");
     }
 
-    lcb_ANALYTICSDEFERREDHANDLE *handle = lcb_analytics_defhnd_extract(resp);
+    lcb_ANALYTICSDEFERREDHANDLE *handle = lcb_cmdanalytics_defhnd_extract(resp);
     if (handle) {
-        const char *status = lcb_analytics_defhnd_status(handle);
+        const char *status = lcb_cmdanalytics_defhnd_status(handle);
         printf("\x1b[1mDEFERRED:\x1b[0m %s\n", status);
-        lcb_analytics_defhnd_setcallback(handle, row_callback);
-        check(lcb_analytics_defhnd_poll(instance, resp->cookie, handle), "poll deferred query status");
-        lcb_analytics_defhnd_free(handle);
+        lcb_cmdanalytics_defhnd_setcallback(handle, row_callback);
+        check(lcb_cmdanalytics_defhnd_poll(instance, resp->cookie, handle), "poll deferred query status");
+        lcb_cmdanalytics_defhnd_free(handle);
     }
 }
 
@@ -151,13 +151,13 @@ int main(int argc, char *argv[])
         const char *stmt = "SELECT * FROM breweries LIMIT 2";
         lcb_CMDANALYTICS *cmd;
         int idx = 0;
-        cmd = lcb_analytics_new();
-        lcb_analytics_setcallback(cmd, row_callback);
-        lcb_analytics_setstatementz(cmd, stmt);
-        lcb_analytics_setdeferred(cmd, 1);
+        cmd = lcb_cmdanalytics_alloc();
+        lcb_cmdanalytics_setcallback(cmd, row_callback);
+        lcb_cmdanalytics_setstatementz(cmd, stmt);
+        lcb_cmdanalytics_setdeferred(cmd, 1);
         check(lcb_analytics_query(instance, &idx, cmd), "schedule analytics query");
         printf("----> \x1b[36m%s\x1b[0m\n", stmt);
-        lcb_analytics_free(cmd);
+        lcb_cmdanalytics_dispose(cmd);
         lcb_wait(instance);
     }
 

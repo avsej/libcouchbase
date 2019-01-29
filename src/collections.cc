@@ -23,6 +23,9 @@
 
 #define LOGARGS(instance, lvl) ()->m_instance->settings, "c9smgmt", LCB_LOG_##lvl, __FILE__, __LINE__
 
+DEFINE_ALLOCATORS(cmdgetmanifest, lcb_CMDGETMANIFEST)
+DEFINE_ALLOCATORS(cmdgetcid, lcb_CMDGETCID)
+
 LIBCOUCHBASE_API
 lcb_error_t lcb_getmanifest(lcb_t instance, const void *cookie, const lcb_CMDGETMANIFEST *cmd)
 {

@@ -17,6 +17,11 @@
 
 #include "internal.h"
 
+DEFINE_ALLOCATORS(cmdnoop, lcb_CMDNOOP)
+DEFINE_ALLOCATORS(cmdstats, lcb_CMDSTATS)
+DEFINE_ALLOCATORS(cmdversions, lcb_CMDVERSIONS)
+DEFINE_ALLOCATORS(cmdverbosity, lcb_CMDVERBOSITY)
+
 struct BcastCookie : mc_REQDATAEX {
     lcb_CALLBACKTYPE type;
     int remaining;

@@ -69,7 +69,6 @@ mcreq_reserve_key(
     uint8_t cid[5] = {0};
 
     /** encode collection ID */
-
     if (((packet->flags & MCREQ_F_NOCID) == 0 && mcreq_pipeline_supports_collections(pipeline)) ||
             (instance && LCBT_SETTING(instance, use_collections) == LCB_COLLECTIONS_FORCE)) {
         ncid = leb128_encode(collection_id, cid);
@@ -460,32 +459,25 @@ mcreq_epkt_find(mc_EXPACKET *ep, const char *key)
 }
 
 void
-mcreq_map_key(mc_CMDQUEUE *queue,
-    const lcb_KEYBUF *key, const lcb_KEYBUF *hashkey,
+mcreq_map_key(mc_CMDQUEUE *queue, const lcb_KEYBUF *key,
     unsigned nhdr, int *vbid, int *srvix)
 {
     const void *hk;
     size_t nhk = 0;
-    if (hashkey) {
-        if (hashkey->type == LCB_KV_COPY && hashkey->contig.bytes != NULL) {
-            hk = hashkey->contig.bytes;
-            nhk = hashkey->contig.nbytes;
-        } else if (hashkey->type == LCB_KV_VBID) {
-            *vbid = hashkey->contig.nbytes;
+    switch (key->type) {
+        case LCB_KV_VBID:
+            *vbid = key->vbid;
             *srvix = lcbvb_vbmaster(queue->config, *vbid);
             return;
-        }
-    }
-    if (!nhk) {
-        if (key->type == LCB_KV_COPY) {
+        case LCB_KV_COPY:
             hk = key->contig.bytes;
             nhk = key->contig.nbytes;
-        } else {
-            const char *buf = key->contig.bytes;
-            buf += nhdr;
-            hk = buf;
+            break;
+        case LCB_KV_HEADER_AND_KEY:
+        default:
+            hk = ((const char *)key->contig.bytes) + nhdr;
             nhk = key->contig.nbytes - nhdr;
-        }
+            break;
     }
     lcbvb_map_key(queue->config, hk, nhk, vbid, srvix);
 }
@@ -506,7 +498,7 @@ mcreq_basic_packet(
         return LCB_EINVAL;
     }
 
-    mcreq_map_key(queue, &cmd->key, &cmd->_hashkey,
+    mcreq_map_key(queue, &cmd->key,
         sizeof(*req) + extlen + ffextlen, &vb, &srvix);
     if (srvix > -1 && srvix < (int)queue->npipelines) {
         *pipeline = queue->pipelines[srvix];

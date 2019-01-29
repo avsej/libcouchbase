@@ -35,40 +35,40 @@ typedef struct lcb_ANALYTICSREQ *lcb_ANALYTICSHANDLE;
 typedef void (*lcb_ANALYTICSCALLBACK)(lcb_t, int, const lcb_RESPANALYTICS *);
 
 LIBCOUCHBASE_API
-lcb_CMDANALYTICS *lcb_analytics_new(void);
+lcb_CMDANALYTICS *lcb_cmdanalytics_alloc(void);
 
 LIBCOUCHBASE_API
-void lcb_analytics_reset(lcb_CMDANALYTICS *cmd);
+void lcb_cmdanalytics_dispose(lcb_CMDANALYTICS *cmd);
 
 LIBCOUCHBASE_API
-void lcb_analytics_free(lcb_CMDANALYTICS *cmd);
+void lcb_cmdanalytics_reset(lcb_CMDANALYTICS *cmd);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_setcallback(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSCALLBACK callback);
+lcb_error_t lcb_cmdanalytics_setcallback(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSCALLBACK callback);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_setquery(lcb_CMDANALYTICS *cmd, const char *query, size_t nquery);
-#define lcb_analytics_setqueryz(cmd, qstr) lcb_analytics_setquery(cmd, qstr, -1)
+lcb_error_t lcb_cmdanalytics_setquery(lcb_CMDANALYTICS *cmd, const char *query, size_t nquery);
+#define lcb_cmdanalytics_setqueryz(cmd, qstr) lcb_cmdanalytics_setquery(cmd, qstr, -1)
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_setstatement(lcb_CMDANALYTICS *cmd, const char *statement, size_t nstatement);
-#define lcb_analytics_setstatementz(cmd, sstr) lcb_analytics_setstatement(cmd, sstr, -1)
+lcb_error_t lcb_cmdanalytics_setstatement(lcb_CMDANALYTICS *cmd, const char *statement, size_t nstatement);
+#define lcb_cmdanalytics_setstatementz(cmd, sstr) lcb_cmdanalytics_setstatement(cmd, sstr, -1)
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_namedparam(lcb_CMDANALYTICS *cmd, const char *name, size_t nname, const char *value,
+lcb_error_t lcb_cmdanalytics_namedparam(lcb_CMDANALYTICS *cmd, const char *name, size_t nname, const char *value,
                                      size_t nvalue);
-#define lcb_analytics_namedparamz(cmd, name, value) lcb_analytics_namedparam(cmd, name, -1, value, -1)
+#define lcb_cmdanalytics_namedparamz(cmd, name, value) lcb_cmdanalytics_namedparam(cmd, name, -1, value, -1)
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_posparam(lcb_CMDANALYTICS *cmd, const char *value, size_t nvalue);
+lcb_error_t lcb_cmdanalytics_posparam(lcb_CMDANALYTICS *cmd, const char *value, size_t nvalue);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_setopt(lcb_CMDANALYTICS *cmd, const char *name, size_t nname, const char *value,
+lcb_error_t lcb_cmdanalytics_setopt(lcb_CMDANALYTICS *cmd, const char *name, size_t nname, const char *value,
                                  size_t nvalue);
-#define lcb_analytics_setoptz(cmd, key, value) lcb_analytics_setopt(cmd, key, -1, value, -1)
+#define lcb_cmdanalytics_setoptz(cmd, key, value) lcb_cmdanalytics_setopt(cmd, key, -1, value, -1)
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_setdeferred(lcb_CMDANALYTICS *cmd, int deferred);
+lcb_error_t lcb_cmdanalytics_setdeferred(lcb_CMDANALYTICS *cmd, int deferred);
 
 typedef enum {
     LCB_ANALYTICSINGEST_NONE = 0,
@@ -79,13 +79,13 @@ typedef enum {
 } lcb_ANALYTICSINGESTMETHOD;
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_ingest_setmethod(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTMETHOD method);
+lcb_error_t lcb_cmdanalytics_ingest_setmethod(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTMETHOD method);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_ingest_setexptime(lcb_CMDANALYTICS *cmd, lcb_U32 exptime);
+lcb_error_t lcb_cmdanalytics_ingest_setexptime(lcb_CMDANALYTICS *cmd, lcb_U32 exptime);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_ingest_ignoreingesterror(lcb_CMDANALYTICS *cmd, int ignore);
+lcb_error_t lcb_cmdanalytics_ingest_ignoreingesterror(lcb_CMDANALYTICS *cmd, int ignore);
 
 typedef enum {
     LCB_ANALYTICSINGEST_OK = 0,
@@ -108,7 +108,7 @@ typedef struct {
 typedef lcb_ANALYTICSINGESTSTATUS (*lcb_ANALYTICSINGESTIDGENERATOR)(lcb_t, const void *, lcb_ANALYTICSINGESTIDGENERATORPARAM *);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_ingest_setidgenerator(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTIDGENERATOR generator);
+lcb_error_t lcb_cmdanalytics_ingest_setidgenerator(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTIDGENERATOR generator);
 
 typedef struct {
     /* input */
@@ -125,7 +125,7 @@ typedef struct {
 typedef lcb_ANALYTICSINGESTSTATUS (*lcb_ANALYTICSINGESTDATACONVERTER)(lcb_t, const void *, lcb_ANALYTICSINGESTDATACONVERTERPARAM *);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_ingest_setdataconverter(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTDATACONVERTER converter);
+lcb_error_t lcb_cmdanalytics_ingest_setdataconverter(lcb_CMDANALYTICS *cmd, lcb_ANALYTICSINGESTDATACONVERTER converter);
 
 /**
  * Response for a Analytics query. This is delivered in the @ref lcb_ANALYTICSCALLBACK
@@ -170,19 +170,19 @@ lcb_error_t lcb_analytics_query(lcb_t instance, const void *cookie, lcb_CMDANALY
 typedef struct lcb_ANALYTICSDEFERREDHANDLE_st lcb_ANALYTICSDEFERREDHANDLE;
 
 LIBCOUCHBASE_API
-lcb_ANALYTICSDEFERREDHANDLE *lcb_analytics_defhnd_extract(const lcb_RESPANALYTICS *response);
+lcb_ANALYTICSDEFERREDHANDLE *lcb_cmdanalytics_defhnd_extract(const lcb_RESPANALYTICS *response);
 
 LIBCOUCHBASE_API
-void lcb_analytics_defhnd_free(lcb_ANALYTICSDEFERREDHANDLE *handle);
+void lcb_cmdanalytics_defhnd_free(lcb_ANALYTICSDEFERREDHANDLE *handle);
 
 LIBCOUCHBASE_API
-const char *lcb_analytics_defhnd_status(lcb_ANALYTICSDEFERREDHANDLE *handle);
+const char *lcb_cmdanalytics_defhnd_status(lcb_ANALYTICSDEFERREDHANDLE *handle);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_defhnd_setcallback(lcb_ANALYTICSDEFERREDHANDLE *handle, lcb_ANALYTICSCALLBACK callback);
+lcb_error_t lcb_cmdanalytics_defhnd_setcallback(lcb_ANALYTICSDEFERREDHANDLE *handle, lcb_ANALYTICSCALLBACK callback);
 
 LIBCOUCHBASE_API
-lcb_error_t lcb_analytics_defhnd_poll(lcb_t instance, const void *cookie, lcb_ANALYTICSDEFERREDHANDLE *handle);
+lcb_error_t lcb_cmdanalytics_defhnd_poll(lcb_t instance, const void *cookie, lcb_ANALYTICSDEFERREDHANDLE *handle);
 /**
  * Cancels an in-progress request. This will ensure that further callbacks
  * for the given request are not delivered.
@@ -197,20 +197,20 @@ lcb_error_t lcb_analytics_defhnd_poll(lcb_t instance, const void *cookie, lcb_AN
  * lcb_CMDANALYTICS *cmd;
  * // (Initialize command...)
  * lcb_n1ql_query(instance, cookie, &cmd);
- * lcb_ANALYTICSHANDLE handle = lcb_analytics_gethandle(cmd);
- * lcb_analytics_free(cmd);
+ * lcb_ANALYTICSHANDLE handle = lcb_cmdanalytics_gethandle(cmd);
+ * lcb_cmdanalytics_free(cmd);
  * @endcode.
  *
- * If the lcb_analytics_query() function returns `LCB_SUCCESS` then the `handle`
+ * If the lcb_cmdanalytics_query() function returns `LCB_SUCCESS` then the `handle`
  * above is populated with the opaque handle. You can then use this handle
  * to cancel the query at a later point, such as within the callback.
  *
  * @code{.c}
- * lcb_analytics_cancel(instance, handle);
+ * lcb_cmdanalytics_cancel(instance, handle);
  * @endcode
  */
 LIBCOUCHBASE_API
-void lcb_analytics_cancel(lcb_t instance, lcb_ANALYTICSHANDLE handle);
+void lcb_cmdanalytics_cancel(lcb_t instance, lcb_ANALYTICSHANDLE handle);
 
 /**@}*/
 
@@ -232,18 +232,18 @@ void lcb_analytics_cancel(lcb_t instance, lcb_ANALYTICSHANDLE handle);
  *
  * @par Attach parent tracing span to request object.
  * @code{.c}
- * lcb_CMDANALYTICS *cmd = lcb_analytics_new();
+ * lcb_CMDANALYTICS *cmd = lcb_cmdanalytics_new();
  * // initialize Analytics command...
  *
- * lcb_analytics_setparentspan(instance, handle, span);
+ * lcb_cmdanalytics_setparentspan(instance, handle, span);
  *
- * lcb_error_t err = lcb_analytics_query(instance, cookie, cmd);
+ * lcb_error_t err = lcb_cmdanalytics_query(instance, cookie, cmd);
  * @endcode
  *
  * @committed
  */
 LIBCOUCHBASE_API
-void lcb_analytics_setparentspan(lcb_CMDANALYTICS *cmd, lcbtrace_SPAN *span);
+void lcb_cmdanalytics_setparentspan(lcb_CMDANALYTICS *cmd, lcbtrace_SPAN *span);
 
 #endif
 /**
