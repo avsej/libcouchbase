@@ -16,8 +16,8 @@
  */
 #include "internal.h"
 
-lcb_error_t
-lcb_observe_seqno3(lcb_t instance, const void *cookie, const lcb_CMDOBSEQNO *cmd)
+lcb_STATUS
+lcb_observe_seqno3(lcb_INSTANCE *instance, const void *cookie, const lcb_CMDOBSEQNO *cmd)
 {
     mc_PACKET *pkt;
     protocol_binary_request_header hdr;
@@ -56,10 +56,10 @@ lcb_observe_seqno3(lcb_t instance, const void *cookie, const lcb_CMDOBSEQNO *cmd
 }
 
 const lcb_MUTATION_TOKEN *
-lcb_get_mutation_token(lcb_t instance, const lcb_KEYBUF *kb, lcb_error_t *errp)
+lcb_get_mutation_token(lcb_INSTANCE *instance, const lcb_KEYBUF *kb, lcb_STATUS *errp)
 {
     int vbix, srvix;
-    lcb_error_t err_s;
+    lcb_STATUS err_s;
     const lcb_MUTATION_TOKEN *existing;
 
     if (!errp) {
