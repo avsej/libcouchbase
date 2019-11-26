@@ -26,10 +26,12 @@ class CredsTest : public ::testing::Test
 {
 };
 
-static lcb_INSTANCE *create(const char *connstr = NULL)
+static lcb_INSTANCE *create(const char *connstr = NULL, const char *username = NULL, const char *password = NULL)
 {
     lcb_CREATEOPTS *crst = NULL;
     lcb_createopts_create(&crst, LCB_TYPE_BUCKET);
+    lcb_createopts_credentials(crst, username, username ? strlen(username) : 0, password,
+                               password ? strlen(password) : 0);
     lcb_createopts_connstr(crst, connstr, strlen(connstr));
     lcb_INSTANCE *ret;
     lcb_STATUS rc = lcb_create(&ret, crst);
@@ -66,7 +68,7 @@ TEST_F(CredsTest, testLegacyCreds)
 
 TEST_F(CredsTest, testRbacCreds)
 {
-    lcb_INSTANCE *instance = create("couchbase://localhost/default?username=mark");
+    lcb_INSTANCE *instance = create("couchbase://localhost/default", "mark");
     lcb::Authenticator &auth = *instance->settings->auth;
     ASSERT_EQ("mark", auth.username());
     ASSERT_EQ(LCBAUTH_MODE_RBAC, auth.mode());

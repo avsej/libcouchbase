@@ -73,6 +73,7 @@ filelist.mk
 /config/m4/version.m4
 /src/config.h
 /src/config.h.in
+/src/connspec-parser.ri
 /src/probes.h
 /src/stamp-h1
 /test-suite.log

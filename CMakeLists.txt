@@ -270,6 +270,18 @@ ELSE()
     ENDIF()
 ENDIF()
 
+FIND_PROGRAM(RAGEL ragel)
+FIND_PROGRAM(SED sed)
+IF(RAGEL)
+    SET(CONNSPEC_PARSER_SRC "${PROJECT_SOURCE_DIR}/src/connspec-parser.rl")
+    SET(CONNSPEC_PARSER_GEN "${PROJECT_SOURCE_DIR}/src/connspec-parser.cc")
+    ADD_CUSTOM_COMMAND(
+            OUTPUT ${CONNSPEC_PARSER_GEN}
+            DEPENDS ${CONNSPEC_PARSER_SRC}
+            COMMENT "RAGEL src/connspec-parser.rl"
+            COMMAND ${RAGEL} -F1 -o ${CONNSPEC_PARSER_GEN} ${CONNSPEC_PARSER_SRC} && ${SED} -i '/^\#line.*/D' ${CONNSPEC_PARSER_GEN})
+ENDIF()
+
 ADD_SUBDIRECTORY(src/vbucket)
 ADD_SUBDIRECTORY(contrib/cbsasl)
 ADD_SUBDIRECTORY(contrib/cliopts)

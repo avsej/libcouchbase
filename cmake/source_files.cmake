@@ -58,6 +58,7 @@ SET(LCB_CORE_CXXSRC
     src/bucketconfig/confmon.cc
     src/collections.cc
     src/connspec.cc
+    src/connspec-parser.cc
     src/crypto.cc
     src/dns-srv.cc
     src/dump.cc

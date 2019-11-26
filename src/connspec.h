@@ -23,8 +23,10 @@
 #include "config.h"
 
 #include <string>
+#include <map>
 #include <vector>
 #include <set>
+#include "strcodecs/strcodecs.h"
 #include "hostlist.h"
 
 #ifdef _MSC_VER
@@ -38,11 +40,24 @@
 
 namespace lcb
 {
+enum HostType { LCB_HOST_TYPE_UNSPEC = 0, LCB_HOST_TYPE_IPV4, LCB_HOST_TYPE_IPV6, LCB_HOST_TYPE_DNS };
+
+enum BootstrapType {
+    LCB_BOOTSTRAP_TYPE_UNSPEC = 0,
+    LCB_BOOTSTRAP_TYPE_HTTP,
+    LCB_BOOTSTRAP_TYPE_HTTPS,
+    LCB_BOOTSTRAP_TYPE_MCD,
+    LCB_BOOTSTRAP_TYPE_MCDS
+};
+
 struct Spechost {
-    Spechost() : port(0), type(0) {}
+    Spechost() : port(0), type(0), htype(LCB_HOST_TYPE_UNSPEC), btype(LCB_BOOTSTRAP_TYPE_UNSPEC) {}
     lcb_U16 port;
     short type;
+    HostType htype;
+    BootstrapType btype;
     std::string hostname;
+
     bool isSSL() const
     {
         return type == LCB_CONFIG_MCD_SSL_PORT || type == LCB_CONFIG_HTTP_SSL_PORT;
@@ -65,7 +80,7 @@ struct Spechost {
     }
     bool isTypeless() const
     {
-        return type == 0;
+        return type == 0 && btype == LCB_BOOTSTRAP_TYPE_UNSPEC;
     }
 
     bool isAnyMcd() const
@@ -83,7 +98,7 @@ struct Spechost {
 class LCB_CLASS_EXPORT Connspec
 {
   public:
-    typedef std::vector< std::pair< std::string, std::string > > Options;
+    typedef std::map< std::string, std::string > Options;
     Connspec()
         : m_sslopts(0), m_implicit_port(0), m_loglevel(0), m_logredact(false), m_transports(), m_flags(0),
           m_ipv6(LCB_IPV6_DISABLED), m_logger(NULL)
@@ -189,17 +204,37 @@ class LCB_CLASS_EXPORT Connspec
     {
         m_hosts.clear();
     }
-    void add_host(const Spechost &host)
+    void add_host(Spechost &host)
     {
+        if (host.htype == LCB_HOST_TYPE_IPV6) {
+            host.hostname = host.hostname.substr(1, host.hostname.size() - 2);
+        }
         m_hosts.push_back(host);
     }
     lcb_ipv6_t ipv6_policy() const
     {
         return m_ipv6;
     }
+    void set_scheme(std::string scheme)
+    {
+        m_scheme = std::move(scheme);
+    }
+    void set_bucket(std::string bucket)
+    {
+        strcodecs::urldecode(bucket);
+        m_bucket = std::move(bucket);
+    }
+    void set_option(std::string key, std::string value)
+    {
+        if (!strcodecs::urldecode(key) || !strcodecs::urldecode(value)) {
+            return;
+        }
+        m_ctlopts[key] = std::move(value);
+    }
 
   private:
     Options m_ctlopts;
+    std::string m_scheme;
     std::string m_bucket;
     std::string m_username;
     std::string m_password;
@@ -214,22 +249,22 @@ class LCB_CLASS_EXPORT Connspec
     bool m_logredact;
 
     inline lcb_STATUS parse_options(const char *options, const char *optend, const char **errmsg);
-    inline lcb_STATUS parse_hosts(const char *hostbegin, const char *hostend, const char **errmsg);
 
     std::set< int > m_transports;
     unsigned m_flags; /**< Internal flags */
     lcb_ipv6_t m_ipv6;
     const lcb_LOGGER *m_logger;
 };
+lcb_STATUS parse_connspec(const char *specstr, size_t specstr_len, lcb::Connspec &spec);
 
-#define LCB_SPECSCHEME_RAW "couchbase+explicit://"
-#define LCB_SPECSCHEME_MCD "couchbase://"
-#define LCB_SPECSCHEME_MCD_SSL "couchbases://"
-#define LCB_SPECSCHEME_HTTP "http://"
-#define LCB_SPECSCHEME_HTTP_SSL "https-internal://"
-#define LCB_SPECSCHEME_MCCOMPAT "memcached://"
-#define LCB_SPECSCHEME_SRV "couchbase+dnssrv://"
-#define LCB_SPECSCHEME_SRV_SSL "couchbases+dnssrv://"
+#define LCB_SPECSCHEME_RAW "couchbase+explicit"
+#define LCB_SPECSCHEME_MCD "couchbase"
+#define LCB_SPECSCHEME_MCD_SSL "couchbases"
+#define LCB_SPECSCHEME_HTTP "http"
+#define LCB_SPECSCHEME_HTTP_SSL "https"
+#define LCB_SPECSCHEME_MCCOMPAT "memcached"
+#define LCB_SPECSCHEME_SRV "couchbase+dnssrv"
+#define LCB_SPECSCHEME_SRV_SSL "couchbases+dnssrv"
 
 // Standalone functionality:
 lcb_STATUS dnssrv_query(const char *name, Hostlist &hostlist);

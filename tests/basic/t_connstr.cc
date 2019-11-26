@@ -120,6 +120,7 @@ TEST_F(ConnstrTest, testParseBasic)
 
     reinit();
     err = params.parse("1.2.3.4:999", &errmsg);
+    ASSERT_EQ(LCB_SUCCESS, err);
     ASSERT_EQ(1, countHosts(&params));
     tmphost = findHost(&params, "1.2.3.4");
     ASSERT_FALSE(tmphost == NULL);
@@ -131,6 +132,7 @@ TEST_F(ConnstrTest, testParseHosts)
 {
     lcb_STATUS err;
     err = params.parse("couchbase://foo.com,bar.com,baz.com", &errmsg);
+    ASSERT_EQ(LCB_SUCCESS, err);
     ASSERT_EQ(3, countHosts(&params));
     ASSERT_FALSE(NULL == findHost(&params, "foo.com"));
     ASSERT_FALSE(NULL == findHost(&params, "bar.com"));
@@ -139,19 +141,13 @@ TEST_F(ConnstrTest, testParseHosts)
     // Parse with 'legacy' format
     reinit();
     err = params.parse("couchbase://foo.com:8091", &errmsg);
-    ASSERT_EQ(LCB_SUCCESS, err);
-    const Spechost *dh = findHost(&params, "foo.com");
-    ASSERT_FALSE(NULL == dh);
-    ASSERT_EQ("foo.com", dh->hostname);
-    // CCBC-599
-    ASSERT_EQ(0, dh->port);
-    ASSERT_EQ(0, dh->type);
+    ASSERT_EQ(LCB_EINVAL, err);
 
     // parse with invalid port, without specifying protocol
     reinit();
     err = params.parse("couchbase://foo.com:4444", &errmsg);
     ASSERT_EQ(LCB_SUCCESS, err);
-    dh = findHost(&params, "foo.com");
+    const Spechost *dh = findHost(&params, "foo.com");
     ASSERT_EQ(4444, dh->port);
     ASSERT_TRUE(dh->isMCD());
 
@@ -208,7 +204,7 @@ TEST_F(ConnstrTest, testParseHosts)
 
     reinit();
     err = params.parse("couchbase://"
-                       "::a15:f2df:3fef:51bb:212a:8cec,[::a15:f2df:3fef:51bb:212a:8ced],[::a15:f2df:3fef:51bb:212a:"
+                       "[::a15:f2df:3fef:51bb:212a:8cec],[::a15:f2df:3fef:51bb:212a:8ced],[::a15:f2df:3fef:51bb:212a:"
                        "8cee]:9001",
                        &errmsg);
     ASSERT_EQ(LCB_SUCCESS, err) << "Cannot parse IPv6";
@@ -219,6 +215,13 @@ TEST_F(ConnstrTest, testParseHosts)
     ASSERT_FALSE(dh == NULL);
     ASSERT_EQ("::a15:f2df:3fef:51bb:212a:8cee", dh->hostname);
     ASSERT_EQ(9001, dh->port);
+
+    reinit();
+    err = params.parse(
+        "couchbase+explicit://"
+        "localhost:41061=http;localhost:40903=mcd;localhost:41033=mcd;localhost:34821=mcd;localhost:36163=mcd;",
+        &errmsg);
+    ASSERT_EQ(LCB_SUCCESS, err) << "explicit list";
 }
 
 TEST_F(ConnstrTest, testParseBucket)

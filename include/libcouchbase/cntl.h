@@ -522,9 +522,9 @@ typedef enum {
  * @committed
  */
 typedef enum {
-    LCB_SSL_ENABLED = 1 << 0,     /**< Use SSL */
-    LCB_SSL_NOVERIFY = 1 << 1,    /**< Don't verify certificates */
-    LCB_SSL_NOGLOBALINIT = 1 << 2 /**< Do not call SSL's global init functions */
+    LCB_SSL_ENABLED = 1u << 0u,     /**< Use SSL */
+    LCB_SSL_NOVERIFY = 1u << 1u,    /**< Don't verify certificates */
+    LCB_SSL_NOGLOBALINIT = 1u << 2u /**< Do not call SSL's global init functions */
 } lcb_SSLOPTS;
 
 /**
