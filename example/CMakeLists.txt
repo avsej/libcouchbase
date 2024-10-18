@@ -108,3 +108,7 @@ IF(NOT WIN32)
     ADD_EXAMPLE(threads-shared threads-shared pthread "")
     ADD_EXAMPLE(threads-private threads-private pthread "")
 ENDIF()
+
+ADD_EXECUTABLE(testCouchConn_SDK_3_3_14 testCouchConn_SDK_3_3_14.cpp)
+TARGET_INCLUDE_DIRECTORIES(testCouchConn_SDK_3_3_14 SYSTEM PRIVATE ${LIBEVENT_INCLUDE_DIR})
+TARGET_LINK_LIBRARIES(testCouchConn_SDK_3_3_14 couchbase ${LIBEVENT_LIBRARIES})

@@ -136,3 +136,5 @@ inst
 
 /.idea/
 /cmake-build-*
+
+testCouchConn.log
